@@ -19,9 +19,8 @@ fun part_1 file_name = let
 	val (l, r) = build_lists lines
 	val sort_l = Lists.merge_sort Int.compare l
 	val sort_r = Lists.merge_sort Int.compare r
-	val single = ListPair.map (fn (a, b) => Int.abs (a - b)) (sort_l, sort_r)
 	in
-		List.foldl Int.+ 0 single
+		ListPair.foldl (fn (a, b, c) => c + (Int.abs (a - b))) 0 (sort_l, sort_r)
 	end
 
 structure D = Dictionary (IntOrd)
@@ -56,11 +55,11 @@ fun part_2 file_name = let
 
 fun main () = let
     val p1s = part_1 "small.txt"
-	val _ = print ("Part 1 small expected 11 and got : " ^ (Int.toString p1s) ^ "\n")
+	val _ = print ("Part 1 small expected 11 and got: " ^ (Int.toString p1s) ^ "\n")
     val p1l = part_1 "large.txt"
-	val _ = print ("Part 1 large expected 2285373 and got : " ^ (Int.toString p1l) ^ "\n")
+	val _ = print ("Part 1 large expected 2285373 and got: " ^ (Int.toString p1l) ^ "\n")
     val p2s = part_2 "small.txt"
-	val _ = print ("Part 1 small expected 31 and got : " ^ (Int.toString p2s) ^ "\n")
+	val _ = print ("Part 1 small expected 31 and got: " ^ (Int.toString p2s) ^ "\n")
     val p2l = part_2 "large.txt"
 	val _ = print ("Part 1 large expected 21142653 and got: " ^ (Int.toString p2l) ^ "\n")
 	in
