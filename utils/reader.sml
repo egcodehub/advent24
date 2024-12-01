@@ -11,7 +11,7 @@ struct
 
 fun read_file (file_name : string) : string = let
 	val f = TextIO.getInstream (TextIO.openIn file_name)
-	val (file, _) = TextIO.InputAll f
+	val (file, _) = TextIO.StreamIO.inputAll f
 	val _ = TextIO.StreamIO.closeIn f
 	in
     	file
@@ -19,9 +19,8 @@ fun read_file (file_name : string) : string = let
 
 fun read_lines (file_name : string) : string list = let
 	val file = read_file file_name
-	val _ = TextIO.StreamIO.closeIn f
 	in
-    	String.split (fn c => c = #"\n") file
+    	String.tokens (fn c => c = #"\n") file
 	end
 
 end
