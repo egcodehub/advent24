@@ -17,8 +17,8 @@ fun build_lists [] =
 fun part_1 file_name = let
 	val lines = Read.read_lines file_name
 	val (l, r) = build_lists lines
-	val sort_l = Lists.merge_sort Int.compare l
-	val sort_r = Lists.merge_sort Int.compare r
+	val sort_l = MyList.merge_sort Int.compare l
+	val sort_r = MyList.merge_sort Int.compare r
 	in
 		ListPair.foldl (fn (a, b, c) => c + (Int.abs (a - b))) 0 (sort_l, sort_r)
 	end

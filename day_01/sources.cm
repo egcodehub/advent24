@@ -7,6 +7,6 @@ Group is
 	../utils/ord_key.sig
 
 	../utils/reader.sml
-	../utils/lists.sml
+	../utils/my_list.sml
 
 	main.sml

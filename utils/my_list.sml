@@ -1,4 +1,4 @@
-signature LISTS =
+signature MY_LIST =
 sig
 
 	val split : int * 'a list -> 'a list * 'a list
@@ -7,7 +7,7 @@ sig
 
 end
 
-structure ListsImpl =
+structure MyListImpl =
 struct
 
 fun split (n, lst) = let
@@ -63,5 +63,5 @@ fun to_string to_s (a, b, c) lst = let
 
 end
 
-structure Lists : LISTS = ListsImpl
+structure MyList : MY_LIST = MyListImpl
 
