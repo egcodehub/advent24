@@ -1,18 +1,20 @@
 structure Main =
 struct
 
-fun build_lists [] =
-	([], [])
-  | build_lists (x :: xs) =
-	case String.tokens Char.isSpace x
-	  of l :: r :: [] => let
-		 val (rest_l, rest_r) = build_lists xs
-		 val num_l = Option.valOf (Int.fromString l)
-		 val num_r = Option.valOf (Int.fromString r)
-		 in
-    		 (num_l :: rest_l, num_r :: rest_r)
-		 end
-	   | _ => raise Fail "Lines contain more than two words"
+(* REMEMBER: We use a foldl, so the lines end up reversed. *)
+fun build_lists lst = let
+	val f = fn (s, (left, right)) =>
+		case String.tokens Char.isSpace s
+		  of l :: r :: [] => let
+    		 val nl = Option.valOf (Int.fromString l)
+    		 val nr = Option.valOf (Int.fromString r)
+    		 in
+        		 (nl :: left, nr :: right)
+    		 end
+    	   | _ => raise Fail "Lines contain more than two words"
+	in
+    	List.foldl f ([], []) lst
+	end
 
 fun part_1 file_name = let
 	val lines = Read.read_lines file_name
