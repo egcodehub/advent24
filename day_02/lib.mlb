@@ -1,0 +1,15 @@
+local
+/home/usuari/Documents/sources/mlton/basis-library/basis.mlb
+/home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
+in
+../utils/ord_key.sig
+../utils/int_ord.sml
+../utils/dictionary.sig
+../utils/dictionary.sml
+
+../utils/reader.sml
+../utils/my_list.sml
+
+main.sml
+end
+
