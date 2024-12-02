@@ -3,6 +3,7 @@ sig
 
 	val split : int * 'a list -> 'a list * 'a list
 	val merge_sort : ('a * 'a -> General.order) -> 'a list -> 'a list
+	val group_n : int -> 'a list -> 'a list list
 	val to_string : ('a -> string) -> (string * string * string) -> 'a list -> string
 
 end
@@ -29,6 +30,21 @@ fun split (n, lst) = let
         	raise Fail "Index too small"
     	else
 			aux (n, lst)
+	end
+
+fun group_n n lst = let
+	fun aux xs =
+		if (List.length xs) < n then
+			[]
+		else
+			(List.take (xs, n)) :: (aux (List.tl xs))
+	in
+    	if n > (List.length lst) then
+			raise Fail "The size of the groups is too big"
+		else if n <= 0 then
+			raise Fail "The size must be greater than 0"
+		else
+			aux lst
 	end
 
 fun merge _ ([], ys) =
