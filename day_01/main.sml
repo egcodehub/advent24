@@ -16,9 +16,7 @@ fun build_lists lst = let
     	List.foldl f ([], []) lst
 	end
 
-fun part_1 file_name = let
-	val lines = Read.read_lines file_name
-	val (l, r) = build_lists lines
+fun part_1 (l, r) = let
 	val sort_l = MyList.merge_sort Int.compare l
 	val sort_r = MyList.merge_sort Int.compare r
 	in
@@ -48,21 +46,19 @@ fun sum_freqs (left, right) = let
 		sum
 	end
 
-fun part_2 file_name = let
-	val lines = Read.read_lines file_name
-	val (l, r) = build_lists lines
-	in
-    	sum_freqs (l, r)
-	end
+fun part_2 lines =
+	sum_freqs lines
 
 fun main () = let
-    val p1s = part_1 "small.txt"
+	val small_l = build_lists (Read.read_lines "small.txt")
+	val large_l = build_lists (Read.read_lines "large.txt")
+    val p1s = part_1 small_l
 	val _ = print ("Part 1 small expected 11 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 "large.txt"
+    val p1l = part_1 large_l
 	val _ = print ("Part 1 large expected 2285373 and got: " ^ (Int.toString p1l) ^ "\n")
-    val p2s = part_2 "small.txt"
+    val p2s = part_2 small_l
 	val _ = print ("Part 1 small expected 31 and got: " ^ (Int.toString p2s) ^ "\n")
-    val p2l = part_2 "large.txt"
+    val p2l = part_2 large_l
 	val _ = print ("Part 1 large expected 21142653 and got: " ^ (Int.toString p2l) ^ "\n")
 	in
     	()
