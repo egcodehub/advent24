@@ -1,51 +1,132 @@
 structure Main =
 struct
 
-fun build_report s =
+fun build_report (s : string) : int list =
 	List.map (Option.valOf o Int.fromString) (String.tokens Char.isSpace s)
 
-fun is_safe_report (lst, tol, d) = let
-	fun valid_diff (x, y, d) = let
-		val sub = Int.abs (x - y)
-		in
-			(sub <= d) andalso (sub > 0)
-		end
-	fun get_f (x, y) =
-		if x < y then Int.< else Int.>
-	fun step_1 ([], ps, e) =
-		e <= tol
-	  | step_1 (x :: xs, ps, e) =
-		e <= tol andalso
-		case (List.find (fn p => valid_diff (p, x, d)) (List.rev ps), ps)
-		  of (NONE  , []) => step_1 (xs, [x], e)
-		   | (NONE  , _ ) => step_1 (xs, x :: ps, e + 1)
-		   | (SOME a, _ ) => step_2 (xs, x, e, get_f (a, x))
-	and step_2 ([], p, e, f) =
-		e <= tol
-	  | step_2 (x :: xs, p, e, f) =
-		e <= tol andalso
-		if valid_diff (p, x, d) andalso f (p, x) then
-    		step_2 (xs, x, e, f)
-		else
-    		step_2 (xs, p, e + 1, f)
+datatype res =
+	Good
+  | One of int list
+  | Two of int list * int list
+
+fun check_report ([] : int list, d : int, t : int) : bool =
+	true
+  | check_report (num :: nums, d, t) = let
+	fun aux ([], _, _) =
+		Good
+	  | aux (x :: xs, p, f) =
+		if p = x then let
+(*
+			val _ = print ("Equal\n")
+			val _ = print ("Both prev and curr are: " ^ (Int.toString p) ^ "\n")
+			val _ = print ("Rest: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") xs))
+*)
+			in
+			One xs
+			end
+		else if (Int.abs (p - x)) > d then let
+(*
+			val _ = print ("Gap Too Big\n")
+			val _ = print ("Prev: " ^ (Int.toString p) ^ "\n")
+			val _ = print ("Curr: " ^ (Int.toString x) ^ "\n")
+			val _ = print ("Rest: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") xs))
+*)
+			in
+			Two (x :: xs, xs)
+			end
+		else if f (p, x) then let
+(*
+			val _ = print ("Good boy\n")
+			val _ = print ("Prev: " ^ (Int.toString p) ^ "\n")
+			val _ = print ("Curr: " ^ (Int.toString x) ^ "\n")
+			val _ = print ("Rest: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") xs))
+*)
+			in
+			case aux (xs, x, f)
+			  of Good => Good
+			   | One ys => One (x :: ys)
+			   | Two (ys, zs) =>
+				 if (List.length ys) > (List.length zs) then let
+(*
+        			 val _ = print ("Combo 1: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") ys))
+        			 val _ = print ("Combo 2: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") zs))
+*)
+					 in
+    				 Two (ys, x :: zs)
+					 end
+				 else
+    				 Two (x :: ys, x :: zs)
+			end
+		else let
+(*
+			val _ = print ("Direction change\n")
+			val _ = print ("Prev: " ^ (Int.toString p) ^ "\n")
+			val _ = print ("Curr: " ^ (Int.toString x) ^ "\n")
+			val _ = print ("Rest: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") xs))
+*)
+			in
+    		Two (x :: xs, xs)
+			end
+	val check =
+		case nums
+		  of [] => Good
+		   | x :: xs => (
+			 case aux (x :: xs, num, if num < x then Int.< else Int.>)
+			   of Good => Good
+				| One ys => One (num :: ys)
+				| Two (ys, zs) =>
+				  if (List.length ys) > (List.length zs) then
+    				  Two (ys, num :: zs)
+				  else
+    				  Two (num :: ys, num :: zs)
+			 )
 	in
-		step_1 (lst, [], 0)
+    	case check
+		  of Good => true
+		   | One xs => let
+(*
+			 val _ = print ("We got TWO back!\n")
+			 val _ = print ("One: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") xs))
+*)
+			 in
+			 if t <= 0 then
+    			 false
+			 else
+    			 check_report (xs, d, t - 1)
+			 end
+		   | Two (xs, ys) => let
+(*
+			 val _ = print ("We got TWO back!\n")
+			 val _ = print ("Start: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") (num :: nums)))
+			 val _ = print ("First: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") xs))
+			 val _ = print ("Second: " ^ (MyList.to_string Int.toString ("[", ", ", "]\n") ys))
+*)
+			 in
+			 if t <= 0 then
+    			 false
+			 else
+    			 check_report (xs, d, t - 1) orelse check_report (ys, d, t - 1)
+			 end
 	end
 
-fun part_x (reports, tol) =
-	List.length (List.filter (fn r => is_safe_report (r, tol, 3)) reports)
+fun part_x (reports : int list list, tol : int) : int =
+	List.length (List.filter (fn r => check_report (r, 3, tol)) reports)
 
 fun main () = let
 	val small_l = List.map build_report (Read.read_lines "small.txt")
 	val large_l = List.map build_report (Read.read_lines "large.txt")
+(*
     val p1s = part_x (small_l, 0)
 	val _ = print ("Part 1 small expected 2 and got: " ^ (Int.toString p1s) ^ "\n")
     val p1l = part_x (large_l, 0)
 	val _ = print ("Part 1 large expected 224 and got: " ^ (Int.toString p1l) ^ "\n")
+*)
     val p2s = part_x (small_l, 1)
 	val _ = print ("Part 2 small expected 4 and got: " ^ (Int.toString p2s) ^ "\n")
+(*
     val p2l = part_x (large_l, 1)
-	val _ = print ("Part 2 large expected (>287) and got: " ^ (Int.toString p2l) ^ "\n")
+	val _ = print ("Part 2 large expected (>289) and got: " ^ (Int.toString p2l) ^ "\n")
+*)
 	in
     	()
 	end

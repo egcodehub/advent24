@@ -2,6 +2,7 @@ Group is
 	$/basis.cm
 
 	../utils/reader.sml
+	../utils/my_str.sml
 	../utils/my_list.sml
 
 	main.sml
