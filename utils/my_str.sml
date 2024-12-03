@@ -10,6 +10,8 @@ end
 structure MyStrImpl =
 struct
 
+exception Empty
+
 fun first "" =
 	raise Empty
   | first s =
