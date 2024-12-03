@@ -54,61 +54,37 @@ fun read_mul "" =
 fun get_numbers "" =
 	[]
   | get_numbers s =
-	case read_string (s, "mul(")
+	case read_mul s
 	  of NONE => get_numbers (String.extract (s, 1, NONE))
-	   | SOME s0 => case read_kind Char.isDigit s0
-	  of NONE => get_numbers (String.extract (s, 1, NONE))
-	   | SOME (s1, d1) => case read_string (s1, ",")
-	  of NONE => get_numbers (String.extract (s, 1, NONE))
-	   | SOME s2 => case read_kind Char.isDigit s2
-	  of NONE => get_numbers (String.extract (s, 1, NONE))
-	   | SOME (s3, d2) => case read_string (s3, ")")
-	  of NONE => get_numbers (String.extract (s, 1, NONE))
-	   | SOME s4 => (d1, d2) :: (get_numbers s4)
+	   | SOME (p, s0) => p :: (get_numbers s0)
 
-fun part_1 s = let
-	val nums = get_numbers s
-	val f = fn ((x, y), acc) => let
-		val a = Option.valOf (Int.fromString x)
-		val b = Option.valOf (Int.fromString y)
-    	in
-        	(a * b) + acc
-    	end
+fun add_str_pair ((x, y), acc) = let
+	val a = Option.valOf (Int.fromString x)
+	val b = Option.valOf (Int.fromString y)
 	in
-    	List.foldl f 0 nums
+    	(a * b) + acc
 	end
 
+fun part_1 s =
+	List.foldl add_str_pair 0 (get_numbers s)
+
 fun part_2 s = let
-	fun enabled "" =
+	fun switch ("", _, _, _, _) =
 		[]
-	  | enabled s = (
+	  | switch (s, f_do, f_dont, f_build, f_same) =
 		case read_string (s, "do()")
-		  of SOME s0 => enabled s0
+		  of SOME s0 => f_do s0
 		   | NONE => case read_string (s, "don't()")
-		  of SOME s0 => disabled s0
+		  of SOME s0 => f_dont s0
 		   | NONE => case read_mul s
-		  of SOME (p, s0) => p :: (enabled s0)
-		   | NONE => enabled (String.extract (s, 1, NONE))
-		)
-	and disabled "" =
-		[]
-	  | disabled s = (
-		case read_string (s, "do()")
-		  of SOME s0 => enabled s0
-		   | NONE => case read_string (s, "don't()")
-		  of SOME s0 => disabled s0
-		   | NONE => case read_mul s
-		  of SOME (_, s0) => disabled s0
-		   | NONE => disabled (String.extract (s, 1, NONE))
-		)
-	val f = fn ((x, y), acc) => let
-		val a = Option.valOf (Int.fromString x)
-		val b = Option.valOf (Int.fromString y)
-    	in
-        	(a * b) + acc
-    	end
+		  of SOME (p, s0) => f_build (p, s0)
+		   | NONE => f_same (String.extract (s, 1, NONE))
+	and enabled s =
+		switch (s, enabled, disabled, fn (p, s0) => (p :: (enabled s0)), enabled)
+	and disabled s =
+		switch (s, enabled, disabled, fn (p, s0) => (disabled s0), disabled)
 	in
-    	List.foldl f 0 (enabled s)
+    	List.foldl add_str_pair 0 (enabled s)
 	end
 
 fun main () = let
