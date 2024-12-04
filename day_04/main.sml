@@ -43,19 +43,19 @@ fun check_all_dirs (grid : char A.array, origen : pair, word : string) : int = l
 fun word_all_dirs (grid : char A.array, word : string) : int = let
 	val (rows, cols) = A.dimensions grid
 	val (first, _) = MyStr.first word
-	fun aux (i, j) =
+	fun aux (i, j, acc) =
 		if i >= rows then
-			aux (0, j + 1)
+			aux (0, j + 1, acc)
 		else if j >= cols then
-			0
+			acc
 		else let
 			val c = A.sub (grid, i, j)
 			val n = if c = first then check_all_dirs (grid, (i, j), word) else 0
 			in
-				n + (aux (i + 1, j))
+				aux (i + 1, j, n + acc)
 			end
 	in
-    	aux (0, 0)
+    	aux (0, 0, 0)
 	end
 
 fun part_1 (grid : char A.array) : int =
@@ -79,20 +79,20 @@ fun cross_search (grid : char A.array, word : string) : int = let
 	val (rows, cols) = A.dimensions grid
 	val (first, _) = MyStr.first word
 	val (last, _ ) = MyStr.last  word
-	fun aux (i, j) =
+	fun aux (i, j, acc) =
 		if (j + side - 1) >= cols then
-			0
+			acc
 		else if (i + side - 1) >= rows then
-			aux (0, j + 1)
+			aux (0, j + 1, acc)
 		else let
 			val c = A.sub (grid, i, j)
 			val b = (c = first) orelse (c = last)
 			val n = if b then check_window (grid, (i, j), side, word) else 0
 			in
-				n + (aux (i + 1, j))
+				aux (i + 1, j, n + acc)
 			end
 	in
-    	aux (0, 0)
+    	aux (0, 0, 0)
 	end
 
 fun part_2 (grid : char A.array) : int =
