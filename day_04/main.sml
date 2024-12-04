@@ -15,27 +15,29 @@ fun does_fit ((ox, oy), (mx, my), (dx, dy), l) = let
 		bx andalso by
 	end
 
+fun word_in_dir ([] : char list, _ : char A.array, _ : int * int, _ : int * int) : bool =
+	true
+  | word_in_dir (z :: zs, grid, (x, y), step as (dx, dy)) = let
+	val c = A.sub (grid, x, y)
+	val (nx, ny) = (x + dx, y + dy)
+	in
+    	(c = z) andalso (word_in_dir (zs, grid, (nx, ny), step))
+	end
+
 fun scout (grid, origen, word) = let
 	val dirs = [(1, 0), (1, 1), (0, 1), (~1, 1), (~1, 0), (~1, ~1), (0, ~1), (1, ~1)]
 	val len = String.size word
 	val wrd = String.explode word
-	fun runs ([], _, _) =
-		true
-	  | runs (z :: zs, (x, y), (dx, dy)) =
-		if (A.sub (grid, x, y)) = z then
-			runs (zs, (x + dx, y + dy), (dx, dy))
-		else
-    		false
 	fun f (step : int * int, n : int) : int =
 		if does_fit (origen, A.dimensions grid, step, len) then
-    		if runs (wrd, origen, step) then n + 1 else n
+    		if word_in_dir (wrd, grid, origen, step) then n + 1 else n
 		else
     		n
 	in
     	List.foldl f 0 dirs
 	end
 
-fun search (grid : char A.array, word : string) : int = let
+fun word_search (grid : char A.array, word : string) : int = let
 	val (rows, cols) = A.dimensions grid
 	val (first, _) = MyStr.first word
 	fun aux (i, j) =
@@ -52,7 +54,45 @@ fun search (grid : char A.array, word : string) : int = let
 	end
 
 fun part_1 (grid : char A.array) : int =
-	search (grid, "XMAS")
+	word_search (grid, "XMAS")
+
+fun check_window (grid : char A.array, (x, y) : int * int, side : int, word : string) : int = let
+	val nw = String.explode word
+	val rw = List.rev nw
+	val d1 = ( 1, 1)
+	val d2 = (~1, 1)
+	val o1 = (x, y)
+	val o2 = (x + side - 1, y)
+	val c1 = (word_in_dir (nw, grid, o1, d1)) orelse (word_in_dir (rw, grid, o1, d1))
+	val c2 = (word_in_dir (nw, grid, o2, d2)) orelse (word_in_dir (rw, grid, o2, d2))
+	in
+    	if c1 andalso c2 then 1 else 0
+	end
+
+fun cross_search (grid : char A.array, word : string) : int = let
+	val side = String.size word
+	val (rows, cols) = A.dimensions grid
+	val (first, _) = MyStr.first word
+	val (last, _ ) = MyStr.last  word
+	fun aux (i, j) =
+		if (j + side - 1) >= cols then
+			0
+		else if (i + side - 1) >= rows then
+			aux (0, j + 1)
+		else let
+			val curr = (A.sub (grid, i, j))
+			in
+    			if curr = first orelse curr = last then
+    				(check_window (grid, (i, j), side, word)) + (aux (i + 1, j))
+				else
+    				aux (i + 1, j)
+			end
+	in
+    	aux (0, 0)
+	end
+
+fun part_2 (grid : char A.array) : int =
+	cross_search (grid, "MAS")
 
 fun main () = let
 	val small_l = create_grid (Read.read_lines "small.txt")
@@ -61,12 +101,10 @@ fun main () = let
 	val _ = print ("Part 1 small expected 18 and got: " ^ (Int.toString p1s) ^ "\n")
     val p1l = part_1 large_l
 	val _ = print ("Part 1 large expected 2569 and got: " ^ (Int.toString p1l) ^ "\n")
-(*
     val p2s = part_2 small_l
-	val _ = print ("Part 2 small expected 48 and got: " ^ (Int.toString p2s) ^ "\n")
+	val _ = print ("Part 2 small expected 9 and got: " ^ (Int.toString p2s) ^ "\n")
     val p2l = part_2 large_l
-	val _ = print ("Part 2 large expected 100450138 and got: " ^ (Int.toString p2l) ^ "\n")
-*)
+	val _ = print ("Part 2 large expected 1998 and got: " ^ (Int.toString p2l) ^ "\n")
 	in
     	()
 	end
@@ -74,6 +112,6 @@ fun main () = let
 end
 
 (*
-val _ = Main.main ()
 *)
+val _ = Main.main ()
 
