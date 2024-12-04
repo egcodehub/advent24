@@ -6,16 +6,18 @@ structure A = Array2
 fun create_grid (lines : string list) =
 	A.fromList (List.map String.explode lines)
 
-fun does_fit ((ox, oy), (mx, my), (dx, dy), l) = let
+type pair = int * int
+
+fun does_fit ((ox, oy) : pair, (mx, my) : pair, (dx, dy) : pair, l : int) : bool = let
 	val ex = ox + ((l - 1) * dx)
 	val ey = oy + ((l - 1) * dy)
-	val bx= (ex >= 0) andalso (ex < mx)
-	val by= (ey >= 0) andalso (ey < my)
+	val bx = (ex >= 0) andalso (ex < mx)
+	val by = (ey >= 0) andalso (ey < my)
 	in
 		bx andalso by
 	end
 
-fun word_in_dir ([] : char list, _ : char A.array, _ : int * int, _ : int * int) : bool =
+fun word_in_dir ([] : char list, _ : char A.array, _ : pair, _ : pair) : bool =
 	true
   | word_in_dir (z :: zs, grid, (x, y), step as (dx, dy)) = let
 	val c = A.sub (grid, x, y)
@@ -24,12 +26,13 @@ fun word_in_dir ([] : char list, _ : char A.array, _ : int * int, _ : int * int)
     	(c = z) andalso (word_in_dir (zs, grid, (nx, ny), step))
 	end
 
-fun scout (grid, origen, word) = let
+fun check_all_dirs (grid : char A.array, origen : pair, word : string) : int = let
 	val dirs = [(1, 0), (1, 1), (0, 1), (~1, 1), (~1, 0), (~1, ~1), (0, ~1), (1, ~1)]
 	val len = String.size word
+	val dim = A.dimensions grid
 	val wrd = String.explode word
 	fun f (step : int * int, n : int) : int =
-		if does_fit (origen, A.dimensions grid, step, len) then
+		if does_fit (origen, dim, step, len) then
     		if word_in_dir (wrd, grid, origen, step) then n + 1 else n
 		else
     		n
@@ -37,7 +40,7 @@ fun scout (grid, origen, word) = let
     	List.foldl f 0 dirs
 	end
 
-fun word_search (grid : char A.array, word : string) : int = let
+fun word_all_dirs (grid : char A.array, word : string) : int = let
 	val (rows, cols) = A.dimensions grid
 	val (first, _) = MyStr.first word
 	fun aux (i, j) =
@@ -45,16 +48,18 @@ fun word_search (grid : char A.array, word : string) : int = let
 			aux (0, j + 1)
 		else if j >= cols then
 			0
-		else if (A.sub (grid, i, j)) = first then
-			(scout (grid, (i, j), word)) + (aux (i + 1, j))
-		else
-			aux (i + 1, j)
+		else let
+			val c = A.sub (grid, i, j)
+			val n = if c = first then check_all_dirs (grid, (i, j), word) else 0
+			in
+				n + (aux (i + 1, j))
+			end
 	in
     	aux (0, 0)
 	end
 
 fun part_1 (grid : char A.array) : int =
-	word_search (grid, "XMAS")
+	word_all_dirs (grid, "XMAS")
 
 fun check_window (grid : char A.array, (x, y) : int * int, side : int, word : string) : int = let
 	val nw = String.explode word
@@ -80,12 +85,11 @@ fun cross_search (grid : char A.array, word : string) : int = let
 		else if (i + side - 1) >= rows then
 			aux (0, j + 1)
 		else let
-			val curr = (A.sub (grid, i, j))
+			val c = A.sub (grid, i, j)
+			val b = (c = first) orelse (c = last)
+			val n = if b then check_window (grid, (i, j), side, word) else 0
 			in
-    			if curr = first orelse curr = last then
-    				(check_window (grid, (i, j), side, word)) + (aux (i + 1, j))
-				else
-    				aux (i + 1, j)
+				n + (aux (i + 1, j))
 			end
 	in
     	aux (0, 0)
@@ -112,6 +116,6 @@ fun main () = let
 end
 
 (*
-*)
 val _ = Main.main ()
+*)
 
