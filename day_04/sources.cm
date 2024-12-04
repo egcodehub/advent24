@@ -1,0 +1,7 @@
+Group is
+	$/basis.cm
+
+	../utils/reader.sml
+	../utils/my_str.sml
+
+	main.sml
