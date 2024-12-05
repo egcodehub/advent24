@@ -2,6 +2,7 @@ structure Main =
 struct
 
 structure V = Vector
+structure A = Array
 
 fun prepare_input (lines : string list) : (int * int) list * int V.vector list = let
 	val is_bar = fn c => c = #"|"
@@ -103,26 +104,87 @@ fun part_1 (dict : info D.dict, updates : (int V.vector) list) : int = let
 		List.foldl f 0 updates
 	end
 
+(* In d we keep symetrical information. What we know of a we also know of b. *)
+fun cmp (d : info D.dict) (a : int, b : int) : General.order =
+	if a = b then
+		General.EQUAL
+	else
+    	case D.find (a, d)
+    	  of NONE => raise Fail ("Undefined number: " ^ (Int.toString a))
+    	   | SOME (l, r) => (
+    		 case S.find (b, l)
+			   of SOME x => General.GREATER
+				| NONE => General.LESS
+    		 )
+
+fun lt d (a, b) =
+	case cmp d (a, b)
+	  of General.LESS => true
+	   | _ => false
+
+fun sort_pages (v : int V.vector, test : int * int -> bool) : int V.vector = let
+	fun min (a, i, (m, p)) : int * int =
+		if i >= (A.length a) then
+			(m, p)
+		else let
+			val curr = A.sub (a, i)
+			val res  = if test (curr, m) then (curr, i) else (m, p)
+			in
+    			min (a, i + 1, res)
+			end
+	fun sorter (a : int A.array, i : int) : unit =
+		if i >= (A.length a) then
+			()
+		else let
+			val curr = A.sub (a, i)
+			val (m, p) = min (a, i + 1, (curr, i))
+			val _ = if not (test (m, curr)) then () else (A.update (a, i, m); A.update (a, p, curr))
+			in
+    			sorter (a, i + 1)
+			end
+	val l = V.length v
+	val a = A.tabulate (l, fn x => V.sub (v, x))
+	val _ =	sorter (a, 0)
+	in
+		A.vector a
+	end
+
+(* Debug function *)
+fun print_vects v = let
+	fun pv (v : int V.vector) : string =
+		V.foldl (fn (x, acc) => acc ^ "," ^ (Int.toString x)) "" v
+	val _ = print (List.foldl (fn (x, acc) => acc ^ "\n" ^ x) "" (List.map pv v))
+	val _ = print "\n"
+	in
+		()
+	end
+
+fun part_2 (v : int V.vector list, d : info D.dict) = let
+	val wrong  = List.filter (fn n => not (is_correct_order (n, d))) v
+	val sorted = List.map (fn p => sort_pages (p, lt d)) wrong
 (*
-fun part_2 () =
-	
+	val _ = print_vects sorted
 *)
+	in
+    	List.foldl (fn (v, acc) => (V.sub (v, (V.length v) div 2)) + acc) 0 sorted
+	end
 
 fun main () = let
 	val (small_pairs, small_upd) = prepare_input (Read.read_lines "small.txt")
 	val (large_pairs, large_upd) = prepare_input (Read.read_lines "large.txt")
 	val small_ord = build_order small_pairs
 	val large_ord = build_order large_pairs
+
     val p1s = part_1 (small_ord, small_upd)
 	val _ = print ("Part 1 small expected 143 and got: " ^ (Int.toString p1s) ^ "\n")
     val p1l = part_1 (large_ord, large_upd)
 	val _ = print ("Part 1 large expected 5588 and got: " ^ (Int.toString p1l) ^ "\n")
-(*
-    val p2s = part_2 small_l
-	val _ = print ("Part 2 small expected 9 and got: " ^ (Int.toString p2s) ^ "\n")
-    val p2l = part_2 large_l
-	val _ = print ("Part 2 large expected 1998 and got: " ^ (Int.toString p2l) ^ "\n")
-*)
+
+    val p2s = part_2 (small_upd, small_ord)
+	val _ = print ("Part 2 small expected 123 and got: " ^ (Int.toString p2s) ^ "\n")
+    val p2s = part_2 (large_upd, large_ord)
+	val _ = print ("Part 2 large expected 5331 and got: " ^ (Int.toString p2s) ^ "\n")
+
 	in
     	()
 	end
@@ -130,6 +192,6 @@ fun main () = let
 end
 
 (*
-val _ = Main.main ()
 *)
+val _ = Main.main ()
 

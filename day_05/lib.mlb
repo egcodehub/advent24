@@ -2,6 +2,16 @@ local
 /home/usuari/Documents/sources/mlton/basis-library/basis.mlb
 /home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
 in
+../utils/ord_key.sig
+../utils/int_ord.sml
+
+../utils/set.sig
+../utils/set.sml
+../utils/dictionary.sig
+../utils/dictionary.sml
+
+../utils/my_list.sml
+
 ../utils/reader.sml
 ../utils/my_str.sml
 
