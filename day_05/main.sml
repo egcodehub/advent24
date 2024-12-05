@@ -19,34 +19,6 @@ fun prepare_input (lines : string list) : (int * int) list * int list list = let
     	parse_rules (lines, ([], []))
 	end
 
-(*
-fun prepare_input (lines : string list) : (int * int) list * int list list = let
-	val is_bar = fn c => c = #"|"
-	val is_com = fn c => c = #","
-	val s_to_n = Option.valOf o Int.fromString
-	fun parse_rules [] =
-		raise Fail "Input missing update lines"
-	  | parse_rules (x :: xs) =
-		case String.tokens is_bar x
-		  of left :: right :: [] => let
-			 val (rules, ups) = parse_rules xs
-			 in
-    			 ((s_to_n left, s_to_n right) :: rules, ups)
-			 end
-		   | _ => parse_updates (x :: xs)
-	and parse_updates [] =
-		([], [])
-	  | parse_updates (x :: xs) = let
-		val nums = List.map s_to_n (String.tokens is_com x)
-		val (rules, ups) = parse_updates xs
-		in
-    		(rules, nums :: ups)
-		end
-	in
-    	parse_rules lines
-	end
-*)
-
 structure D = Dictionary (IntOrd)
 structure S = Set (IntOrd)
 
@@ -111,11 +83,15 @@ fun lt d (a, b) =
 	   | _ => false
 
 fun part_2 (cmp : int * int -> General.order, lt : int * int -> bool, updates : int list list) : int = let
-	val wrong  = List.filter (fn ns => not (is_correct_order lt ns)) updates
-	val sorted = List.map (MyList.merge_sort cmp) wrong
-	val middle = fn xs => List.nth (xs, ((List.length xs) div 2))
+	fun aux ([], acc) =
+		acc
+	  | aux (x :: xs, acc) =
+		if is_correct_order lt x then
+    		aux (xs, acc)
+		else
+    		aux (xs, (List.nth (MyList.merge_sort cmp x, ((List.length x) div 2))) + acc)
 	in
-    	List.foldl (fn (ns, acc) => (middle ns) + acc) 0 sorted
+		aux (updates, 0)
 	end
 
 fun main () = let
