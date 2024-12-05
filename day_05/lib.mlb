@@ -1,0 +1,10 @@
+local
+/home/usuari/Documents/sources/mlton/basis-library/basis.mlb
+/home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
+in
+../utils/reader.sml
+../utils/my_str.sml
+
+main.sml
+end
+

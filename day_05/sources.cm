@@ -1,0 +1,15 @@
+Group is
+	$/basis.cm
+
+	../utils/dictionary.sig
+	../utils/dictionary.sml
+	../utils/set.sig
+	../utils/set.sml
+	../utils/ord_key.sig
+	../utils/int_ord.sml
+
+	../utils/reader.sml
+	../utils/my_str.sml
+	../utils/my_list.sml
+
+	main.sml
