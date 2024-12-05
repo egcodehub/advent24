@@ -1,30 +1,32 @@
 structure Main =
 struct
 
-structure V = Vector
-structure A = Array
-
-fun prepare_input (lines : string list) : (int * int) list * int V.vector list = let
+fun prepare_input (lines : string list) : (int * int) list * int list list = let
 	val is_bar = fn c => c = #"|"
 	val is_com = fn c => c = #","
 	val s_to_n = Option.valOf o Int.fromString
-	fun aux [] =
+	fun parse_rules [] =
 		raise Fail "Input missing update lines"
-	  | aux (x :: xs) =
+	  | parse_rules (x :: xs) =
 		case String.tokens is_bar x
 		  of left :: right :: [] => let
-			 val (rest, updates) = aux xs
-			 val num_l = s_to_n left
-			 val num_r = s_to_n right
+			 val (rules, ups) = parse_rules xs
 			 in
-    			 ((num_l, num_r) :: rest, updates)
+    			 ((s_to_n left, s_to_n right) :: rules, ups)
 			 end
-		   | _ => ([], List.map (fn s => V.fromList (List.map s_to_n (String.tokens is_com s))) (x :: xs))
+		   | _ => parse_updates (x :: xs)
+	and parse_updates [] =
+		([], [])
+	  | parse_updates (x :: xs) = let
+		val nums = List.map s_to_n (String.tokens is_com x)
+		val (rules, ups) = parse_updates xs
+		in
+    		(rules, nums :: ups)
+		end
 	in
-    	aux lines
+    	parse_rules lines
 	end
 
-(* Dictionary with keys of type int. *)
 structure D = Dictionary (IntOrd)
 structure S = Set (IntOrd)
 
@@ -47,59 +49,25 @@ fun add_ordering ((left, right) : int * int, scale0 : info D.dict) : info D.dict
 fun build_order (pairs : (int * int) list) : info D.dict =
 	List.foldl add_ordering D.empty pairs
 
-fun is_correct_order (v : int V.vector, d : info D.dict) : bool = let
-	fun searcher (v, i, is_end, cond, step) =
-		if is_end i then
-			true
-		else let
-			val b = cond (V.sub (v, i))
-			in
-    			b andalso (searcher (v, step i, is_end, cond, step))
-			end
-	fun is_at_side (d : info D.dict, elem : int, select) (x : int) : bool =
-		Option.isSome (S.find (x, select (D.lookup (elem, d))))
-	val is_at_left  = fn e => is_at_side (d, e, fn (l, _) => l)
-	val is_at_right = fn e => is_at_side (d, e, fn (_, r) => r)
-	val at_bot = fn x => x < 0
-	val at_top = fn x => x >= (V.length v)
-	fun apply_searcher i =
-		if at_top i then
-			true
-		else let
-			val e = V.sub (v, i)
-			val l = searcher (v, i - 1, at_bot, is_at_left e, fn x => x - 1)
-			val r = searcher (v, i + 1, at_top, is_at_right e, fn x => x + 1)
-			in
-				(l andalso r) andalso (apply_searcher (i + 1))
-			end
+fun is_correct_order (test : int * int -> bool) (lst : int list) : bool = let
+	fun aux [] =
+		true
+	  | aux (x :: []) =
+		true
+	  | aux (x :: y :: xs) =
+		(test (x, y)) andalso (aux (y :: xs))
 	in
-		apply_searcher 0
+    	aux lst
 	end
 
-(* DEBUGGING INFORMATION *)
-fun show_dict dict = let
-	fun ts (n, (l, r)) = let
-		val sl = S.to_list l
-		val sr = S.to_list r
-		val f = MyList.to_string Int.toString ("[", ", ", "]")
+fun part_1 (test : int * int -> bool, updates : int list list) : int = let
+	val f = fn (nums, acc) => let
+		val mid   = (List.length nums) div 2
+		val n_mid = List.nth (nums, mid)
+		val n_acc = if is_correct_order test nums then acc + n_mid else acc
 		in
-    		(f sl) ^ " >>>>> " ^ (Int.toString n) ^ " <<<<< " ^ (f sr) ^ "\n"
+    		n_acc
 		end
-	val l = MyList.to_string ts ("Summary:\n", "\n", "-------\n") (D.to_list dict)
-	in
-    	print l
-	end
-
-fun part_1 (dict : info D.dict, updates : (int V.vector) list) : int = let
-	val f = fn (nums, acc) =>
-		if is_correct_order (nums, dict) then let
-			val i = (V.length nums) div 2
-			val m = V.sub (nums, i)
-			in
-    			acc + m
-			end
-		else
-			acc
 	in
 		List.foldl f 0 updates
 	end
@@ -122,51 +90,12 @@ fun lt d (a, b) =
 	  of General.LESS => true
 	   | _ => false
 
-fun sort_pages (v : int V.vector, test : int * int -> bool) : int V.vector = let
-	fun min (a, i, (m, p)) : int * int =
-		if i >= (A.length a) then
-			(m, p)
-		else let
-			val curr = A.sub (a, i)
-			val res  = if test (curr, m) then (curr, i) else (m, p)
-			in
-    			min (a, i + 1, res)
-			end
-	fun sorter (a : int A.array, i : int) : unit =
-		if i >= (A.length a) then
-			()
-		else let
-			val curr = A.sub (a, i)
-			val (m, p) = min (a, i + 1, (curr, i))
-			val _ = if not (test (m, curr)) then () else (A.update (a, i, m); A.update (a, p, curr))
-			in
-    			sorter (a, i + 1)
-			end
-	val l = V.length v
-	val a = A.tabulate (l, fn x => V.sub (v, x))
-	val _ =	sorter (a, 0)
+fun part_2 (cmp : int * int -> General.order, lt : int * int -> bool, updates : int list list) : int = let
+	val wrong  = List.filter (fn ns => not (is_correct_order lt ns)) updates
+	val sorted = List.map (MyList.merge_sort cmp) wrong
+	val middle = fn xs => List.nth (xs, ((List.length xs) div 2))
 	in
-		A.vector a
-	end
-
-(* Debug function *)
-fun print_vects v = let
-	fun pv (v : int V.vector) : string =
-		V.foldl (fn (x, acc) => acc ^ "," ^ (Int.toString x)) "" v
-	val _ = print (List.foldl (fn (x, acc) => acc ^ "\n" ^ x) "" (List.map pv v))
-	val _ = print "\n"
-	in
-		()
-	end
-
-fun part_2 (v : int V.vector list, d : info D.dict) = let
-	val wrong  = List.filter (fn n => not (is_correct_order (n, d))) v
-	val sorted = List.map (fn p => sort_pages (p, lt d)) wrong
-(*
-	val _ = print_vects sorted
-*)
-	in
-    	List.foldl (fn (v, acc) => (V.sub (v, (V.length v) div 2)) + acc) 0 sorted
+    	List.foldl (fn (ns, acc) => (middle ns) + acc) 0 sorted
 	end
 
 fun main () = let
@@ -174,17 +103,20 @@ fun main () = let
 	val (large_pairs, large_upd) = prepare_input (Read.read_lines "large.txt")
 	val small_ord = build_order small_pairs
 	val large_ord = build_order large_pairs
+	val ps_lt = lt small_ord
+	val pl_lt = lt large_ord
+	val ps_cmp = cmp small_ord
+	val pl_cmp = cmp large_ord
 
-    val p1s = part_1 (small_ord, small_upd)
+    val p1s = part_1 (ps_lt, small_upd)
 	val _ = print ("Part 1 small expected 143 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 (large_ord, large_upd)
+    val p1l = part_1 (pl_lt, large_upd)
 	val _ = print ("Part 1 large expected 5588 and got: " ^ (Int.toString p1l) ^ "\n")
 
-    val p2s = part_2 (small_upd, small_ord)
+    val p2s = part_2 (ps_cmp, ps_lt, small_upd)
 	val _ = print ("Part 2 small expected 123 and got: " ^ (Int.toString p2s) ^ "\n")
-    val p2s = part_2 (large_upd, large_ord)
-	val _ = print ("Part 2 large expected 5331 and got: " ^ (Int.toString p2s) ^ "\n")
-
+    val p2l = part_2 (pl_cmp, pl_lt, large_upd)
+	val _ = print ("Part 2 large expected 5331 and got: " ^ (Int.toString p2l) ^ "\n")
 	in
     	()
 	end
@@ -192,6 +124,6 @@ fun main () = let
 end
 
 (*
-*)
 val _ = Main.main ()
+*)
 
