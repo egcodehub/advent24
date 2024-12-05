@@ -5,6 +5,25 @@ fun prepare_input (lines : string list) : (int * int) list * int list list = let
 	val is_bar = fn c => c = #"|"
 	val is_com = fn c => c = #","
 	val s_to_n = Option.valOf o Int.fromString
+	fun parse_rules ([], _) =
+		raise Fail "Input missing update lines"
+	  | parse_rules (x :: xs, (a, b)) =
+		case String.tokens is_bar x
+		  of left :: right :: [] => parse_rules (xs, ((s_to_n left, s_to_n right) :: a, b))
+		   | _ => parse_updates (x :: xs, (a, b))
+	and parse_updates ([], res) =
+		res
+	  | parse_updates (x :: xs, (a, b)) =
+		parse_updates (xs, (a, (List.map s_to_n (String.tokens is_com x)) :: b))
+	in
+    	parse_rules (lines, ([], []))
+	end
+
+(*
+fun prepare_input (lines : string list) : (int * int) list * int list list = let
+	val is_bar = fn c => c = #"|"
+	val is_com = fn c => c = #","
+	val s_to_n = Option.valOf o Int.fromString
 	fun parse_rules [] =
 		raise Fail "Input missing update lines"
 	  | parse_rules (x :: xs) =
@@ -26,6 +45,7 @@ fun prepare_input (lines : string list) : (int * int) list * int list list = let
 	in
     	parse_rules lines
 	end
+*)
 
 structure D = Dictionary (IntOrd)
 structure S = Set (IntOrd)
