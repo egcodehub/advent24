@@ -84,8 +84,7 @@ fun mark (grid, (r, c), acc) =
     		 acc + 1
 		 end
 
-fun part_1 (grid : char A.array) : int = let
-	val start = find_guard grid
+fun part_1 (grid : char A.array, start : int * int) : int = let
 	val limit = A.dimensions grid
 	fun walk (p, dir, acc) =
 		if is_outside (limit, p) then
@@ -147,9 +146,9 @@ fun main () = let
 	val small_start = find_guard small_grid_1
 	val large_start = find_guard large_grid_1
 
-    val p1s = part_1 small_grid_1
+    val p1s = part_1 (small_grid_1, small_start)
 	val _ = print ("Part 1 small expected 41 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 large_grid_1
+    val p1l = part_1 (large_grid_1, large_start)
 	val _ = print ("Part 1 large expected 5564 and got: " ^ (Int.toString p1l) ^ "\n")
 
     val p2s = part_2 (small_grid_1, small_start)
