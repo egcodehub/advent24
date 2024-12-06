@@ -1,6 +1,10 @@
 Group is
 	$/basis.cm
 
+	../utils/set.sig
+	../utils/set.sml
+	../utils/ord_key.sig
+
 	../utils/reader.sml
 
 	main.sml

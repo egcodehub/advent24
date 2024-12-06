@@ -1,3 +1,32 @@
+structure PairsOrd : ORD_KEY =
+struct
+
+type t = (int * int) * (int * int)
+
+fun cmp (((a1, b1), (c1, d1)), ((a2, b2), (c2, d2))) = let
+	val a = Int.compare (a1, a2)
+	val b = Int.compare (b1, b2)
+	val c = Int.compare (c1, c2)
+	val d = Int.compare (d1, d2)
+	in
+    	case a
+		  of EQUAL => (
+			 case b
+			   of EQUAL => (
+				  case c
+					of EQUAL => d
+					 | _ => c
+				  )
+				| _ => b
+			 )
+		   | _ => a
+	end
+
+fun eq (p1 : t, p2 : t) : bool =
+	p1 = p2
+
+end
+
 structure Main =
 struct
 
@@ -46,10 +75,6 @@ fun back_and_turn ((r, c), (dr, dc)) = let
 fun step ((r, c), (dr, dc)) =
 	(r + dr, c + dc)
 
-(* DEBUG FUNCTION *)
-fun print_p (x, y) =
-	print ("(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")\n")
-
 fun mark (grid, (r, c), acc) =
 	case A.sub (grid, r, c)
 	  of #"X" => acc
@@ -73,21 +98,65 @@ fun part_1 (grid : char A.array) : int = let
 		walk (start, (~1, 0), 0)
 	end
 
-fun main () = let
-	val small_grid = create_grid (Read.read_lines "small.txt")
-	val large_grid = create_grid (Read.read_lines "large.txt")
+structure S = Set (PairsOrd)
 
-    val p1s = part_1 small_grid
+fun is_closed_loop (grid : char A.array, start : int * int, d : int * int) : bool = let
+	val limit = A.dimensions grid
+	fun aux (p, dir, seen) =
+		if is_outside (limit, p) then
+			false
+		else if is_obstacle (grid, p) then let
+			val switch = back_and_turn (p, dir)
+			val n_dir  = turn_right dir
+			in
+				case S.find ((p, dir), seen)
+				  of NONE => aux (switch, n_dir, S.insert ((p, dir), seen))
+				   | SOME _ => true
+			end
+		else
+			aux (step (p, dir), dir, seen)
+	in
+		aux (start, d, S.empty)
+	end
+
+fun part_2 (grid : char A.array, start : int * int) : int = let
+	val limit = A.dimensions grid
+    val _ = A.update (grid, (#1 start), (#2 start), #".")
+	fun walk (p as (r, c), dir, acc) =
+		if is_outside (limit, p) then
+			acc
+		else if is_obstacle (grid, p) then
+			walk (back_and_turn (p, dir), turn_right dir, acc)
+		else if (A.sub (grid, r, c)) = #"." then
+			walk (step (p, dir), dir, acc)
+		else let
+			val _ = A.update (grid, r, c, #"#")
+			val b = is_closed_loop (grid, start, (~1, 0))
+			val n_acc = if b then acc + 1 else acc
+			val _ = A.update (grid, r, c, #".")
+			in
+    			walk (step (p, dir), dir, n_acc)
+    		end
+	in
+		walk (start, (~1, 0), 0)
+	end
+
+fun main () = let
+	val small_grid_1 = create_grid (Read.read_lines "small.txt")
+	val large_grid_1 = create_grid (Read.read_lines "large.txt")
+	val small_start = find_guard small_grid_1
+	val large_start = find_guard large_grid_1
+
+    val p1s = part_1 small_grid_1
 	val _ = print ("Part 1 small expected 41 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 large_grid
+    val p1l = part_1 large_grid_1
 	val _ = print ("Part 1 large expected 5564 and got: " ^ (Int.toString p1l) ^ "\n")
 
-(*
-    val p2s = part_2 (ps_cmp, ps_lt, small_upd)
-	val _ = print ("Part 2 small expected 123 and got: " ^ (Int.toString p2s) ^ "\n")
-    val p2l = part_2 (pl_cmp, pl_lt, large_upd)
-	val _ = print ("Part 2 large expected 5331 and got: " ^ (Int.toString p2l) ^ "\n")
-*)
+    val p2s = part_2 (small_grid_1, small_start)
+	val _ = print ("Part 2 small expected 6 and got: " ^ (Int.toString p2s) ^ "\n")
+    val p2l = part_2 (large_grid_1, large_start)
+	val _ = print ("Part 2 large expected 1976 and got: " ^ (Int.toString p2l) ^ "\n")
+
 	in
     	()
 	end
