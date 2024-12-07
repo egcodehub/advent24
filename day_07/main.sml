@@ -3,11 +3,10 @@ struct
 
 structure L = LargeInt
 
-fun read_input (lines : string list) : (L.int * string list) list = let
-	val g = Option.valOf o L.fromString
+fun read_input (lines : string list) : (string * string list) list = let
 	val f = fn s =>
 		case String.tokens (fn c => c = #":") s
-		  of res :: parts :: [] => (g res, String.tokens (fn c => c = #" ") parts)
+		  of res :: parts :: [] => (res, String.tokens (fn c => c = #" ") parts)
 		   | _ => raise Fail "Invalid line format"
 	in
     	List.map f lines
@@ -41,17 +40,53 @@ fun validate_2 (result, acc, lst) = let
     	aux (acc, lst)
 	end
 
-fun valid_cal f (result : L.int, numbers : string list) : bool =
+fun valid_cal f (number : L.int, word : string, numbers : string list) : bool =
 	case numbers
 	  of [] => raise Fail "Empty list"
 	   | x :: xs => f (result, s_to_n x, xs)
 
-fun part_x f (cals : (L.int * string list) list) : L.int = let
-	fun aux (cal as (res, _), acc) =
-		if valid_cal f cal then
-			acc + res
-		else
-			acc
+fun can_sub (acc, x) = let
+	val s = acc - x
+	in
+    	if s < (L.toLarge 0) then NONE else SOME s
+	end
+
+fun can_div (acc, x) =
+	if (d mod x) = (L.toLarge 0) then
+		SOME (d div x)
+	else
+		NONE
+
+fun can_con (acc, x) =
+	if (String.size acc) < (String.size x) then
+		NONE
+	else if (String.extract (acc, (String.size acc) - (String.size x), NONE)) = x then
+		SOME (String.extract (acc, 0, SOME ((String.size s1) - (String.size s2)))
+	else
+		NONE
+
+fun valid_cal ops (number : L.int, word : string, numbers : string list) : bool = let
+	fun aux (_, []) =
+		raise Fail "Empty list"
+	  | aux (acc, x :: []) =
+		List.filter Option.isSome (List.map (fn f => f (acc, x)) ops)
+	  | aux (acc, x :: xs) =
+		case aux (acc, xs)
+		  of [] => false
+		   | ys => 
+	in
+		
+	end
+
+fun part_x f (cals : (string * string list) list) : L.int = let
+	fun aux ((word, numbers), acc) = let
+		val number = s_to_n word
+		in
+    		if valid_cal f (number, word, numbers) then
+        		acc + number
+    		else
+    			acc
+		end
 	in
     	List.foldl aux (Int.toLarge 0) cals
 	end
