@@ -15,6 +15,7 @@ fun read_string (s, "") =
     		NONE
 	end
 
+(* TODO: Add a parameter to limit the length of the kind of word. *)
 fun read_kind (f : char -> bool) ("" : string) : (string * string) option =
 	NONE
   | read_kind f s = let
