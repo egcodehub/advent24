@@ -11,6 +11,7 @@ in
 ../utils/dictionary.sml
 
 ../utils/reader.sml
+../utils/seq.sml
 
 main.sml
 end

@@ -1,20 +1,12 @@
 structure Main =
 struct
 
-structure A = Array2
-
 structure S = Set (CoordOrd)
 structure C = Dictionary (CharOrd)
 
-type pos = int * int
+type coord = int * int
 
-(* DEBUGGING *)
-(*
-fun str_point (x, y) =
-	"(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
-*)
-
-fun parse_input (file_name : string) : (int * int) * S.set C.dict = let
+fun parse_input (file_name : string) : coord * S.set C.dict = let
 	val txt = Read.read_file file_name
 	val len = String.size txt
 	fun aux (i, r, c, w, d) =
@@ -40,88 +32,73 @@ fun parse_input (file_name : string) : (int * int) * S.set C.dict = let
         aux (0, 0, 0, 0, C.empty)
 	end
 
-(* Debugging function. *)
-(*
-fun print_points (d : S.set C.dict) : int = let
-	val l : (char * S.set) list = C.to_list d
-	fun aux (c, ps) : string = let
-		val fst : string = "(" ^ (str c) ^ ", "
-		val p = fn (x, y) => "(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
-		val ss : string = MyList.to_string p ("[", ", ", "]") (S.to_list ps)
-    	in
-        	fst ^ ss ^ ")"
-    	end
-	val _ = print (MyList.to_string aux ("[", ", ", "]\n") l)
-	in
-    	0
-	end
-*)
-
-fun in_bounds ((max_r, max_c), (r, c)) =
+fun in_bounds ((max_r, max_c) : coord, (r, c) : coord) : bool =
 	(r >= 0) andalso (c >= 0) andalso (r < max_r) andalso (c < max_c)
 
-fun two_antinodes (p1, p2) = let
-	val (x1, y1) = p1
-	val (x2, y2) = p2
+structure FS = FinSeq
+
+fun test_1 (cond : coord -> bool) (i : int) (to_dir : coord -> coord) ((r, c) : coord) : coord FS.seq = let
+	val next = to_dir (r, c)
+	in
+    	if i > 0 andalso cond next then
+        	FS.cons (SOME next, fn () => test_1 cond (i - 1) to_dir next)
+    	else
+        	FS.cons (NONE, fn () => test_1 cond i to_dir (r, c))
+	end
+
+fun test_2 (cond : coord -> bool) (to_dir : coord -> coord) ((r, c) : coord) : coord FS.seq = let
+	val next = to_dir (r, c)
+	in
+    	if cond next then
+        	FS.cons (SOME next, fn () => test_2 cond to_dir next)
+    	else
+        	FS.cons (NONE, fn () => test_2 cond to_dir (r, c))
+	end
+
+fun get_dirs ((x1, y1), (x2, y2)) = let
 	val (dx, dy) = (x2 - x1, y2 - y1)
-(*
-	val _ = print ("Diff is: " ^ (str_point (dx, dy)) ^ "\n")
-*)
-	val an_p1 = (x1 - dx, y1 - dy)
-	val an_p2 = (x2 + dx, y2 + dy)
 	in
-    	(an_p1, an_p2)
+		(fn (x, y) => (x - dx, y - dy), fn (x, y) => (x + dx, y + dy))
 	end
 
-fun find_antinodes dims (pivot, [], acc) =
+fun find_antinodes (test : (coord -> coord) -> coord -> coord FS.seq) (pivot : coord, [] : coord list, acc : S.set) : S.set =
 	acc
-  | find_antinodes dims (pivot, x :: xs, acc) =	let
-	val (a1, a2) = two_antinodes (pivot, x)
-(*
-	val _ = print ("First pivot: " ^ (str_point pivot) ^ "\n")
-	val _ = print ("Second pivot: " ^ (str_point x) ^ "\n")
-	val _ = print ("First antinode: " ^ (str_point a1) ^ "\n")
-	val _ = print ("Second antinode: " ^ (str_point a2) ^ "\n")
-	val _ = print "\n"
-*)
-	val acc0 = if in_bounds (dims, a1) then S.insert (a1, acc) else acc
-	val acc1 = if in_bounds (dims, a2) then S.insert (a2, acc0) else acc0
+  | find_antinodes test (pivot, x :: xs, acc0) = let
+	val (d1, d2) = get_dirs (pivot, x)
+	(* Starting at the opposite point for each antenna allows counting the current one. *)
+	val acc1 = FS.foldl S.insert acc0 (test d1 x)
+	val acc2 = FS.foldl S.insert acc1 (test d2 pivot)
 	in
-    	find_antinodes dims (pivot, xs, acc1)
+    	find_antinodes test (pivot, xs, acc2)
 	end
 
-fun add_antinodes (dims : int * int) (ps : pos list, acc : S.set) : S.set =
+fun add_antinodes (test : (coord -> coord) -> coord -> coord FS.seq) (ps : coord list, acc : S.set) : S.set =
 	case ps
 	  of [] => acc
 	   | x :: [] => acc
-	   | x :: xs => add_antinodes dims (xs, find_antinodes dims (x, xs, acc))
+	   | x :: xs => add_antinodes test (xs, find_antinodes test (x, xs, acc))
 
-fun part_1 (dims : int * int, d : S.set C.dict) : int = let
-	val f = fn ((_, ps), acc) => add_antinodes dims (S.to_list ps, acc)
+fun part_x (test : (coord -> coord) -> coord -> coord FS.seq) (d : S.set C.dict) : int = let
+	val f = fn ((_ : char, ps : S.set), acc) => add_antinodes test (S.to_list ps, acc)
 	val antinodes = List.foldl f S.empty (C.to_list d)
-(*
-	val _ = print (MyList.to_string str_point ("[", ", ", "]\n") (S.to_list antinodes))
-	val _ = print ("Dimensions: " ^ (str_point dims) ^ "\n")
-*)
 	in
     	S.size antinodes
 	end
 
 fun main () = let
-	val small_ant = parse_input "small.txt"
-	val large_ant = parse_input "large.txt"
+	val (s_dims, small_ant) = parse_input "small.txt"
+	val (l_dims, large_ant) = parse_input "large.txt"
 
-    val p1s = part_1 small_ant
+    val p1s = part_x (test_1 (fn p => in_bounds (s_dims, p)) 1) small_ant
 	val _ = print ("Part 1 small expected 14 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 large_ant
+    val p1l = part_x (test_1 (fn p => in_bounds (l_dims, p)) 1) large_ant
 	val _ = print ("Part 1 large expected 398 and got: " ^ (Int.toString p1l) ^ "\n")
 
-(*
-    val p2s = part_2 (small_grid_1, small_start)
-	val _ = print ("Part 2 small expected 6 and got: " ^ (Int.toString p2s) ^ "\n")
-    val p2l = part_2 (large_grid_1, large_start)
-	val _ = print ("Part 2 large expected 1976 and got: " ^ (Int.toString p2l) ^ "\n")
-*)
+    val p2s = part_x (test_2 (fn p => in_bounds (s_dims, p))) small_ant
+	val _ = print ("Part 2 small expected 34 and got: " ^ (Int.toString p2s) ^ "\n")
+    val p2l = part_x (test_2 (fn p => in_bounds (l_dims, p))) large_ant
+	val _ = print ("Part 2 large expected 1333 and got: " ^ (Int.toString p2l) ^ "\n")
+
 	in
     	()
 	end

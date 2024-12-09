@@ -11,5 +11,6 @@ Group is
 
 	../utils/reader.sml
 	../utils/my_list.sml
+	../utils/seq.sml
 
 	main.sml
