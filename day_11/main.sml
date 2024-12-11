@@ -1,3 +1,18 @@
+structure LargeDepthOrd : ORD_KEY =
+struct
+
+type t = LargeInt.int * int
+
+fun cmp ((a, b), (c, d)) =
+	case LargeInt.compare (a, c)
+	  of General.EQUAL => Int.compare (b, d)
+	   | res => res
+
+fun eq (p1 : t, p2 : t) : bool =
+	(cmp (p1, p2)) = General.EQUAL
+
+end
+
 structure Main =
 struct
 
@@ -9,16 +24,11 @@ fun read_stones (file_name : string) : L.int list =
 	 Read.read_file)
 	file_name
 
-datatype 'a rule =
-	Rejects
-  | GivesOne of 'a
-  | GivesTwo of 'a * 'a
-
-fun rule_1 (i : L.int) : L.int rule =
+fun rule_1 (i : L.int) : L.int list option =
 	if i = (Int.toLarge 0) then
-		GivesOne (Int.toLarge 1)
+		SOME [Int.toLarge 1]
 	else
-		Rejects
+		NONE
 
 fun count_digits (i : L.int) : int = let
 	val ten = Int.toLarge 10
@@ -31,7 +41,7 @@ fun count_digits (i : L.int) : int = let
 		aux (i, 0)
 	end
 
-fun rule_2 (i : L.int) : L.int rule = let
+fun rule_2 (i : L.int) : L.int list option = let
 	val d = count_digits i
 	in
     	if (d mod 2) = 0 then let
@@ -39,73 +49,68 @@ fun rule_2 (i : L.int) : L.int rule = let
 			val t = Real.toLargeInt IEEEReal.TO_ZERO (Math.pow (10.0, Real.fromLargeInt l))
     		val a = i div t
     		val b = i mod t
-(*
-			val _ = print ("Even digits: " ^ (L.toString i) ^ "\n")
-			val _ = print ("Number of digits: " ^ (Int.toString d) ^ "\n")
-			val _ = print ("Left part: " ^ (L.toString a) ^ "\n")
-			val _ = print ("Right part: " ^ (L.toString b) ^ "\n")
-			val _ = print "\n"
-*)
     		in
-        		GivesTwo (a, b)
+        		SOME [a, b]
     		end
 		else
-			Rejects
+			NONE
 	end
 
-fun rule_3 (i : L.int) : L.int rule =
-	GivesOne (i * (Int.toLarge 2024))
+fun rule_3 (i : L.int) : L.int list option =
+	SOME [i * (Int.toLarge 2024)]
 
 fun first_non_reject ([], x) =
 	NONE
   | first_non_reject (r :: rs, x) =
 	case r x
-	  of Rejects => first_non_reject (rs, x)
-	   | res => SOME res
+	  of NONE => first_non_reject (rs, x)
+	   | res =>  res
 
-fun blink (rules, []) =
-	[]
-  | blink (rules : (L.int -> L.int rule) list, x :: xs : L.int list) : L.int list =
-	case first_non_reject (rules, x)
-	  of NONE => raise Fail "Didn't find rules for this stone"
-	   | SOME res => (
-		case res
-		  of Rejects => raise Fail "Impossible case"
-		   | GivesOne v => v :: (blink (rules, xs))
-		   | GivesTwo (v1, v2) => v1 :: v2 :: (blink (rules, xs))
-		)
+structure D = Dictionary (LargeDepthOrd)
 
-fun blink_n (rules, stones, n) =
-	if n <= 0 then
-		stones
-	else
-		blink_n (rules, blink (rules, stones), n - 1)
-
-fun part_1 (rules, stones : L.int list) : int = let
-	val res = blink_n (rules, stones, 25)
-(*
-	val _ = print (MyList.to_string L.toString ("[", ", ", "]\n") res)
-*)
+fun fast_blink (rules, stones, depth) : L.int = let
+	val zero = Int.toLarge 0
+	val one  = Int.toLarge 1
+	val two  = Int.toLarge 2
+	val memo : L.int D.dict ref = ref D.empty
+    fun blink_stone (stone : L.int, d : int) =
+    	case first_non_reject (rules, stone)
+    	  of NONE => raise Fail "Number has no rules defined"
+		   | SOME lst =>
+			 if d = 1 then
+    			 Int.toLarge (List.length lst)
+			 else
+    			 List.foldl (f_acc d) zero lst
+	and f_acc d (v, acc) =
+		case D.find ((v, d), !memo)
+		  of NONE => let
+			 val res = blink_stone (v, d - 1)
+			 val _ = memo := D.insert (((v, d), res), !memo)
+			 in
+    			 res + acc
+			 end
+		   | SOME x => x + acc
 	in
-		List.length res
+		List.foldl (fn (s, acc) => (blink_stone (s, depth)) + acc) zero stones
+	end
+
+fun part_x (stones : L.int list, n : int) : L.int = let
+	val rules = [rule_1, rule_2, rule_3]
+	in
+		fast_blink (rules, stones, n)
 	end
 
 fun main () = let
 	val s_line = read_stones "small.txt"
 	val l_line = read_stones "large.txt"
-	val rules = [rule_1, rule_2, rule_3]
 
-    val p1s = part_1 (rules, s_line)
-	val _ = print ("Part 1 small expected 55312 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 (rules, l_line)
-	val _ = print ("Part 1 large expected 220999 and got: " ^ (Int.toString p1l) ^ "\n")
+    val p1s = part_x (s_line, 25)
+	val _ = print ("Part 1 small expected 55312 and got: " ^ (L.toString p1s) ^ "\n")
+    val p1l = part_x (l_line, 25)
+	val _ = print ("Part 1 large expected 220999 and got: " ^ (L.toString p1l) ^ "\n")
 
-(*
-    val p2s = part_2 s_map
-	val _ = print ("Part 2 small expected 81 and got: " ^ (Int.toString p2s) ^ "\n")
-    val p2s = part_2 l_map
-	val _ = print ("Part 2 small expected 1651 and got: " ^ (Int.toString p2s) ^ "\n")
-*)
+    val p2l = part_x (l_line, 75)
+	val _ = print ("Part 2 large expected 261936432123724 and got: " ^ (L.toString p2l) ^ "\n")
 	in
     	()
 	end
