@@ -3,6 +3,7 @@ local
 /home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
 in
 ../utils/reader.sml
+../utils/my_list.sml
 
 main.sml
 end

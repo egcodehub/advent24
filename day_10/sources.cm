@@ -2,5 +2,10 @@ Group is
 	$/basis.cm
 
 	../utils/reader.sml
+	../utils/my_list.sml
+	../utils/ord_key.sig
+	../utils/set.sig
+	../utils/set.sml
+	../utils/coord_ord.sml
 
 	main.sml
