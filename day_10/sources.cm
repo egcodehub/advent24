@@ -1,11 +1,11 @@
 Group is
 	$/basis.cm
 
-	../utils/reader.sml
-	../utils/my_list.sml
 	../utils/ord_key.sig
+	../utils/coord_ord.sml
 	../utils/set.sig
 	../utils/set.sml
-	../utils/coord_ord.sml
+
+	../utils/reader.sml
 
 	main.sml

@@ -9,18 +9,10 @@ fun read_map (file_name : string) : int A.array = let
     	A.fromList (((List.map (List.map f)) o (List.map String.explode) o Read.read_lines) file_name)
 	end
 
-fun is_start i =
-	i = 0
-
 type coord = int * int
 type path = coord list
 
-(* DEBUG FUNCTION *)
-fun str_point (x, y) =
-	"(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
-
-fun find_paths (map : int A.array, f, init) = let
-	(* It's useless to optimize by not going down the path we just came from. *)
+fun find_paths (map : int A.array, f : (path list) * 'a -> 'a, init : 'a) = let
 	val dirs = [(1, 0), (0, ~1), (~1, 0), (0, 1)]
 	val (max_row, max_col) = A.dimensions map
 	fun in_bounds (r, c) =
@@ -56,14 +48,20 @@ fun find_paths (map : int A.array, f, init) = let
 
 structure S = Set (CoordOrd)
 
-fun tts (lst : path list, acc : int) : int = let
+fun unique_ends (lst : path list, acc : int) : int = let
 	val len_ten = List.filter (fn xs => (List.length xs) = 10) lst
 	in
     	(S.size (S.from_list (List.map List.last len_ten))) + acc
 	end
 
 fun part_1 (map : int A.array) : int =
-	find_paths (map, tts, 0)
+	find_paths (map, unique_ends, 0)
+
+fun all_paths (lst : path list, acc : path list) : path list =
+	(List.filter (fn xs => List.length xs = 10) lst) @ acc
+
+fun part_2 (map : int A.array) : int =
+	List.length (find_paths (map, all_paths, []))
 
 fun main () = let
 	val s_map = read_map "small.txt"
@@ -74,12 +72,11 @@ fun main () = let
     val p1l = part_1 l_map
 	val _ = print ("Part 1 large expected 744 and got: " ^ (Int.toString p1l) ^ "\n")
 
-(*
     val p2s = part_2 s_map
-	val _ = print ("Part 2 small expected 2858 and got: " ^ (Int.toString p2s) ^ "\n")
+	val _ = print ("Part 2 small expected 81 and got: " ^ (Int.toString p2s) ^ "\n")
     val p2s = part_2 l_map
-	val _ = print ("Part 2 small expected 6323761685944 and got: " ^ (Int.toString p2s) ^ "\n")
-*)
+	val _ = print ("Part 2 small expected 1651 and got: " ^ (Int.toString p2s) ^ "\n")
+
 	in
     	()
 	end
