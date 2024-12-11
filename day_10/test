@@ -1,8 +1,0 @@
-fun search_paths (NONE : (int * int) option) : path list =
-	[]
-  | search_paths (SOME (r, c), prev) =
-	val lst1 : path list list = List.map (fn d => search_paths (step d (r, c))) dirs
-    val lst2 : path list list = List.map (List.map (fn ps => (r, c) :: ps)) lst1
-    in
-        List.concat lst2
-    end
