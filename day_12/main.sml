@@ -26,7 +26,7 @@ fun count_verts (g : (char * bool) A.array, code : char, pos) : int = let
 		end
 	val t : bool A.array = A.fromList (List.map (List.map (fn xs => is_family pos xs)) around)
 	fun find_corner (lt, lb, rt, rb) : int =
-		if (not lb andalso not rt) orelse (not lt andalso lb andalso rt) orelse (not lt andalso not lb andalso not rt) then
+		if (not lb andalso not rt) orelse (not lt andalso lb andalso rt) then
 			1
 		else
 			0
