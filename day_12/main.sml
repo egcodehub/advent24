@@ -24,23 +24,12 @@ fun count_verts (g : (char * bool) A.array, code : char, pos) : int = let
 		in
     		in_bounds (dims, (nr, nc)) andalso (#1 (A.sub (g, nr, nc))) = code
 		end
-	val valids = List.map (List.map (fn xs => is_family pos xs)) around
-	val t : bool A.array = A.fromList valids
+	val t : bool A.array = A.fromList (List.map (List.map (fn xs => is_family pos xs)) around)
 	fun find_corner (lt, lb, rt, rb) : int =
-		if lt andalso lb andalso rt andalso rb then
-			0
-		else if not lt andalso rt andalso lb andalso rb then
-			1
-		else if lt andalso ((not rt andalso lb) orelse (not lb andalso rt)) andalso rb then
-			0
-		else if (not lt andalso not lb andalso rt andalso rb) orelse (not lt andalso not rt andalso lb andalso rb) then
-			0
-		else if not lb andalso not rt andalso lt andalso rb then
-			1
-		else if not lt andalso not lb andalso not rt andalso rb then
+		if (not lb andalso not rt) orelse (not lt andalso lb andalso rt) orelse (not lt andalso not lb andalso not rt) then
 			1
 		else
-			raise Fail "Impossible corner configuration"
+			0
 	val q1 = find_corner (A.sub (t, 0, 0), A.sub (t, 1, 0), A.sub (t, 0, 1), A.sub (t, 1, 1))
 	val q2 = find_corner (A.sub (t, 0, 2), A.sub (t, 1, 2), A.sub (t, 0, 1), A.sub (t, 1, 1))
 	val q3 = find_corner (A.sub (t, 2, 2), A.sub (t, 2, 1), A.sub (t, 1, 2), A.sub (t, 1, 1))
