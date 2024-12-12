@@ -20,7 +20,9 @@ fun step ((x, y), (dx, dy)) =
 fun sp (x, y) =
 	"(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
 
-fun pull_thread (garden : (char * bool) A.array, start : int * int) : char * int * int = let
+structure H = Heap (CoordOrd)
+
+fun pull_thread (garden : (char * bool) A.array, (sr, sc) : int * int) : char * int * int = let
 	val dims = A.dimensions garden
 	val dirs = [(1, 0), (0, 1), (~1, 0), (0, ~1)]
 	fun pick (og, v) (d, (acc, w)) = let
@@ -33,29 +35,26 @@ fun pull_thread (garden : (char * bool) A.array, start : int * int) : char * int
     					if b then
     						(acc, w)
 						else
-							(p :: acc, w)
+							(H.push (p, acc), w)
 					else
     					(acc, w + 1)
         		end
     		else
         		(acc, w + 1)
 		end
-	fun search ([], (t, area, perim)) =
-		(t, area, perim)
-	  | search ((x as (r, c)) :: xs, (t, area, perim)) = let
-		val (l, b) = A.sub (garden, r, c)
-		val _ = A.update (garden, r, c, (l, true))
-		val (ys, w) = List.foldl (pick (x, l)) (xs, 0) dirs
-		in
-			if b then
-				search (ys, (t, area, perim))
-			else
-        		search (ys, (t, area + 1, perim + w))
-		end
-	val (c1, c2) = start
-	val (l, _) = A.sub (garden, c1, c2)
+	fun search (xs, (a, area, perim)) =
+		case H.pop xs
+		  of NONE => (a, area, perim)
+		   | SOME (p as (r, c), ys) => let
+			 val (l, b) = A.sub (garden, r, c)
+			 val _ = A.update (garden, r, c, (l, true))
+			 val (zs, w) = List.foldl (pick (p, l)) (ys, 0) dirs
+			 in
+    			 search (zs, (a, area + 1, perim + w))
+			 end
+	val (l, _) = A.sub (garden, sr, sc)
 	in
-    	search ([start], (l, 0, 0))
+    	search (H.push ((sr, sc), H.empty), (l, 0, 0))
 	end
 
 (* Debugging function. To remove *)
