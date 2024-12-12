@@ -2,6 +2,11 @@ local
 /home/usuari/Documents/sources/mlton/basis-library/basis.mlb
 /home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
 in
+../utils/ord_key.sig
+../utils/coord_ord.sml
+../utils/heap.sig
+../utils/heap.sml
+
 ../utils/reader.sml
 
 main.sml

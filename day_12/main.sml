@@ -16,54 +16,79 @@ fun in_bounds ((max_r, max_c), (r, c)) =
 fun step ((x, y), (dx, dy)) =
 	(x + dx, y + dy)
 
-(* MORE DEBUGGING STUFF MAKE SURE TO TAKE IT OFF FORM THE FINAL THING. *)
-fun sp (x, y) =
-	"(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
+fun count_verts (g : (char * bool) A.array, code : char, pos) : int = let
+	val dims = A.dimensions g
+	val around = [[(~1, ~1), (~1, 0), (~1, 1)], [(0, ~1), (0, 0), (0, 1)], [(1, ~1), (1, 0), (1, 1)]]
+	fun is_family (r, c) (dr, dc) = let
+		val (nr, nc) = step ((r, c), (dr, dc))
+		in
+    		in_bounds (dims, (nr, nc)) andalso (#1 (A.sub (g, nr, nc))) = code
+		end
+	val valids = List.map (List.map (fn xs => is_family pos xs)) around
+	val t : bool A.array = A.fromList valids
+	fun find_corner (lt, lb, rt, rb) : int =
+		if lt andalso lb andalso rt andalso rb then
+			0
+		else if not lt andalso rt andalso lb andalso rb then
+			1
+		else if lt andalso ((not rt andalso lb) orelse (not lb andalso rt)) andalso rb then
+			0
+		else if (not lt andalso not lb andalso rt andalso rb) orelse (not lt andalso not rt andalso lb andalso rb) then
+			0
+		else if not lb andalso not rt andalso lt andalso rb then
+			1
+		else if not lt andalso not lb andalso not rt andalso rb then
+			1
+		else
+			raise Fail "Impossible corner configuration"
+	val q1 = find_corner (A.sub (t, 0, 0), A.sub (t, 1, 0), A.sub (t, 0, 1), A.sub (t, 1, 1))
+	val q2 = find_corner (A.sub (t, 0, 2), A.sub (t, 1, 2), A.sub (t, 0, 1), A.sub (t, 1, 1))
+	val q3 = find_corner (A.sub (t, 2, 2), A.sub (t, 2, 1), A.sub (t, 1, 2), A.sub (t, 1, 1))
+	val q4 = find_corner (A.sub (t, 2, 0), A.sub (t, 1, 0), A.sub (t, 2, 1), A.sub (t, 1, 1))
+	in
+    	q1 + q2 + q3 + q4
+	end
 
 structure H = Heap (CoordOrd)
 
-fun pull_thread (garden : (char * bool) A.array, (sr, sc) : int * int) : char * int * int = let
+fun pull_thread (garden : (char * bool) A.array, (start_row, start_col) : int * int) : char * int * int * int = let
 	val dims = A.dimensions garden
 	val dirs = [(1, 0), (0, 1), (~1, 0), (0, ~1)]
 	fun pick (og, v) (d, (acc, w)) = let
-		val p as (x, y) = step (og, d)
+		val next as (x, y) = step (og, d)
 		in
-    		if in_bounds (dims, p) then let
+    		if in_bounds (dims, next) then let
         		val (a, b) = A.sub (garden, x, y)
         		in
             		if a = v then
     					if b then
     						(acc, w)
 						else
-							(H.push (p, acc), w)
+							(H.push (next, acc), w)
 					else
     					(acc, w + 1)
         		end
     		else
         		(acc, w + 1)
 		end
-	fun search (xs, (a, area, perim)) =
+	fun search (xs, (code, area, perim, verts)) =
 		case H.pop xs
-		  of NONE => (a, area, perim)
-		   | SOME (p as (r, c), ys) => let
-			 val (l, b) = A.sub (garden, r, c)
-			 val _ = A.update (garden, r, c, (l, true))
-			 val (zs, w) = List.foldl (pick (p, l)) (ys, 0) dirs
+		  of NONE => (code, area, perim, verts)
+		   | SOME (point as (row, col), ys) => let
+			 val _ = A.update (garden, row, col, (code, true))
+			 val (zs, walls) = List.foldl (pick (point, code)) (ys, 0) dirs
+			 val corners = count_verts (garden, code, point)
 			 in
-    			 search (zs, (a, area + 1, perim + w))
+    			 search (zs, (code, area + 1, perim + walls, verts + corners))
 			 end
-	val (l, _) = A.sub (garden, sr, sc)
+	val (letter, _) = A.sub (garden, start_row, start_col)
 	in
-    	search (H.push ((sr, sc), H.empty), (l, 0, 0))
+    	search (H.push ((start_row, start_col), H.empty), (letter, 0, 0, 0))
 	end
 
-(* Debugging function. To remove *)
-fun str_pair (c : char, x : int, y : int) =
-	"(" ^ (str c) ^ ", " ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
-
-fun part_1 (garden : (char * bool) A.array) : int = let
+fun part_x (garden : (char * bool) A.array) : (char * int * int * int) list = let
 	val (max_r, max_c) = A.dimensions garden
-	fun scan (r, c, acc : (char * int * int) list) =
+	fun scan (r, c, acc : (char * int * int * int) list) =
 		if r >= max_r then
     		acc
 		else if c >= max_c then
@@ -73,20 +98,30 @@ fun part_1 (garden : (char * bool) A.array) : int = let
 		else
 			scan (r, c + 1, (pull_thread (garden, (r, c))) :: acc)
 	in
-    	List.foldl (fn ((_, a, b), acc) => (a * b) + acc) 0 (scan (0, 0, []))
+        scan (0, 0, [])
 	end
 
 fun main () = let
 	val s_garden = read_garden "small.txt"
 	val l_garden = read_garden "large.txt"
 
-    val p1s = part_1 s_garden
-	val _ = print ("Part 1 small expected 1930 and got: " ^ (Int.toString p1s) ^ "\n")
-    val p1l = part_1 l_garden
-	val _ = print ("Part 1 large expected 1421958 and got: " ^ (Int.toString p1l) ^ "\n")
-(*
-*)
+	val s_lst = part_x s_garden
+	val l_lst = part_x l_garden
 
+	val f_1 = fn ((c, x, y, z), acc) => (x * y) + acc
+	val f_2 = fn ((c, x, y, z), acc) => (x * z) + acc
+
+	val p1s = List.foldl f_1 0 s_lst
+	val p1l = List.foldl f_1 0 l_lst
+
+	val p2s = List.foldl f_2 0 s_lst
+	val p2l = List.foldl f_2 0 l_lst
+
+	val _ = print ("Part 1 small expected 1930 and got: " ^ (Int.toString p1s) ^ "\n")
+	val _ = print ("Part 1 large expected 1421958 and got: " ^ (Int.toString p1l) ^ "\n")
+
+	val _ = print ("Part 2 small expected 1206 and got: " ^ (Int.toString p2s) ^ "\n")
+	val _ = print ("Part 2 large expected 885394 and got: " ^ (Int.toString p2l) ^ "\n")
 	in
     	()
 	end
