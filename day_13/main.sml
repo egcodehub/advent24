@@ -2,6 +2,7 @@ signature COEFICIENT =
 sig
 	structure I : INTEGER
 	type coef
+
 	val eq : coef * coef -> bool
 	val new : I.int * I.int option -> coef
 	val add : coef * coef -> coef
@@ -15,10 +16,10 @@ sig
 	val to_string : coef -> string
 end
 
-functor Coeficient (I : INTEGER) : COEFICIENT =
+functor Coeficient (Arg : sig structure I : INTEGER end) : COEFICIENT =
 struct
 
-structure I = I
+structure I = Arg.I
 
 datatype coef =
 	Full of I.int
@@ -138,16 +139,26 @@ fun get_int (Full x) =
 
 end
 
-functor Equation2d (C : COEFICIENT) =
+functor Equation2d (Arg : sig structure C : COEFICIENT structure I : INTEGER end) :
+sig
+	structure C : COEFICIENT
+	type eq2d
+	val new : C.coef * C.coef * C.coef -> eq2d
+	val solve : eq2d * eq2d -> (C.coef * C.coef) option
+end =
 struct
 
+structure C = Arg.C
+structure I = Arg.I
 type eq2d = C.coef * C.coef * C.coef
 
 fun new (c1, c2, c3) =
 	(c1, c2, c3)
 
+(*
 fun from_ints (a, b, c) =
 	(C.new (a, NONE), C.new (b, NONE), C.new (c, NONE))
+*)
 
 fun as_aux f ((a1, a2, a3), (b1, b2, b3)) =
 	(f (a1, b1), f (a2, b2), f (a3, b3))
@@ -206,7 +217,7 @@ fun solve (eq1 as (a1, a2, a3), eq2 as (b1, b2, b3)) : (C.coef * C.coef) option 
 		solve (sub (eq1, scale (C.quot (a2, b2), eq2)), eq2)
 	else if not (C.eq (one, b2)) then
 		solve (eq1, scale (C.quot (one, b2), eq2))
-	else if not (C.eq (two, a1)) then
+	else if not (C.eq (one, a1)) then
 		solve (scale (C.quot (one, a1), eq1), eq2)
 	else
 		SOME (a3, b3)
@@ -254,12 +265,12 @@ fun parse_machines (file_name : string) : claw_info list = let
 		aux (Read.read_lines file_name)
 	end
 
-structure CO = Coeficient (L)
-structure E = Equation2d (CO)
+structure CO : COEFICIENT = Coeficient (struct structure I = L end)
+structure E = Equation2d (struct structure C = CO structure I = L end)
 
-fun smallest ({a = (ax, ay), b = (bx, by), p = (px, py)} : claw_info) : L.int = let
-	val eq1 = E.new (CO.new (ax, NONE), CO.new (bx, NONE), CO.new (px, NONE))
-	val eq2 = E.new (CO.new (ay, NONE), CO.new (by, NONE), CO.new (py, NONE))
+fun find_cost ({a = (ax, ay), b = (bx, by), p = (px, py)} : claw_info, factor) : L.int = let
+	val eq1 = E.new (CO.new (ax, NONE), CO.new (bx, NONE), CO.new (px + factor, NONE))
+	val eq2 = E.new (CO.new (ay, NONE), CO.new (by, NONE), CO.new (py + factor, NONE))
 	in
 		case E.solve (eq1, eq2)
 		  of NONE => (Int.toLarge 0)
@@ -289,21 +300,19 @@ fun smallest ({a = (ax, ay), b = (bx, by), p = (px, py)} : claw_info) : L.int = 
 	end
 
 fun part_x (infos : claw_info list, factor : L.int) : L.int =
-	List.foldl (fn (i, acc) => (smallest i) + acc) (Int.toLarge 0) infos
+	List.foldl (fn (i, acc) => (find_cost (i, factor)) + acc) (Int.toLarge 0) infos
 
 fun main () = let
-	val s_line = parse_machines "small.txt"
-	val l_line = parse_machines "large.txt"
+	val s_machine = parse_machines "small.txt"
+	val l_machine = parse_machines "large.txt"
 
-    val p1s = part_x (s_line, Int.toLarge 0)
+    val p1s = part_x (s_machine, Int.toLarge 0)
 	val _ = print ("Part 1 small expected 480 and got: " ^ (L.toString p1s) ^ "\n")
-    val p1l = part_x (l_line, Int.toLarge 0)
+    val p1l = part_x (l_machine, Int.toLarge 0)
 	val _ = print ("Part 1 large expected 31623 and got: " ^ (L.toString p1l) ^ "\n")
 
-(*
-    val p2l = part_1 l_line
-	val _ = print ("Part 2 large expected 261936432123724 and got: " ^ (Int.toString p2l) ^ "\n")
-*)
+    val p2l = part_x (l_machine, (Option.valOf o L.fromString) "10000000000000")
+	val _ = print ("Part 2 large expected 93209116744825 and got: " ^ (L.toString p2l) ^ "\n")
 	in
     	()
 	end
@@ -311,6 +320,6 @@ fun main () = let
 end
 
 (*
-val _ = Main.main ()
 *)
+val _ = Main.main ()
 
