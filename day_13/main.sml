@@ -1,6 +1,7 @@
 signature COEFICIENT =
 sig
 	type coef
+	val eq : coef * coef -> bool
 	val new : int * int option -> coef
 	val add : coef * coef -> coef
 	val sub : coef * coef -> coef
@@ -20,10 +21,40 @@ datatype coef =
 	Full of int
   | Frac of int * int
 
+fun to_string (Full x) =
+	Int.toString x
+  | to_string (Frac (x, y)) =
+	(Int.toString x) ^ "/" ^ (Int.toString y)
+
+fun gcd (a, 0) =
+	Int.abs a
+  | gcd (a, b) =
+	gcd (b, a mod b)
+
+fun simplify (Full x) =
+	Full x
+  | simplify (Frac (x, y)) = let
+	val common = gcd (x, y)
+	val xd = x div common
+	val yd = y div common
+	in
+		if xd = 0 then
+			Full 0
+		else if yd = 1 then
+			Full xd
+		else
+		let
+		val _ = print ("Start: " ^ (to_string (Frac (x, y))) ^ "\n")
+		val _ = print ("End: " ^ (to_string (Frac (if Int.sameSign (xd, yd) then xd else ~ xd, Int.abs yd))) ^ "\n")
+		in
+        	Frac (if Int.sameSign (xd, yd) then xd else ~ (Int.abs xd), Int.abs yd)
+		end
+	end
+
 fun new (x, NONE) =
 	Full x
   | new (x, SOME y) =
-	Frac (x, y)
+	simplify (Frac (x, y))
 
 fun to_real (Full x) : real =
 	Real.fromInt x
@@ -50,31 +81,6 @@ fun cmp (c1, c2) =
 			General.LESS
 	end
 
-fun gcd (a, 0) =
-	Int.abs a
-  | gcd (a, b) =
-	gcd (b, a mod b)
-
-fun simplify (Full x) =
-	Full x
-  | simplify (Frac (x, y)) = let
-	val common = gcd (x, y)
-	val xd = x div common
-	val yd = y div common
-	in
-		if xd = 0 then
-			Full 0
-		else if yd = 1 then
-			Full xd
-		else
-        	Frac (if xd div yd < 0 then ~ xd else Int.abs xd, Int.abs yd)
-	end
-
-fun to_frac (Full x) =
-	Frac (x, 1)
-  | to_frac fr =
-	fr
-
 fun as_aux f (Full x1, Full x2) =
 	as_aux f (Frac (x1, 1), Frac (x2, 1))
   | as_aux f (Full x1, Frac p2) =
@@ -88,7 +94,12 @@ fun add (c1, c2) =
 	as_aux (op +) (c1, c2)
 
 fun sub (c1, c2) =
+	let
+	val _ = print ("Sub 1: " ^ (to_string c1) ^ "\n")
+	val _ = print ("Sub 2: " ^ (to_string c2) ^ "\n")
+	in
 	as_aux (op -) (c1, c2)
+	end
 
 fun scale (n, Full x) =
 	Full (n * x)
@@ -128,11 +139,6 @@ fun get_int (Full x) =
   | get_int _ =
 	raise Fail "Not a full number"
 
-fun to_string (Full x) =
-	Int.toString x
-  | to_string (Frac (x, y)) =
-	(Int.toString x) ^ "/" ^ (Int.toString y)
-
 end
 
 structure Equation2d =
@@ -144,6 +150,9 @@ type eq2d = C.coef * C.coef * C.coef
 
 fun new (c1, c2, c3) =
 	(c1, c2, c3)
+
+fun from_ints (a, b, c) =
+	(C.new (a, NONE), C.new (b, NONE), C.new (c, NONE))
 
 fun as_aux f ((a1, a2, a3), (b1, b2, b3)) =
 	(f (a1, b1), f (a2, b2), f (a3, b3))
@@ -176,20 +185,31 @@ fun to_string (c1, c2, c3) =
 	(C.to_string c1) ^ " " ^ (C.to_string c2) ^ " | " ^ (C.to_string c3)
 
 fun solve (eq1 as (a1, a2, a3), eq2 as (b1, b2, b3)) : (C.coef * C.coef) option =
-(*
 	let
 	val _ = print "Solving iteration:\n"
 	val _ = print ("Eq1: " ^ (to_string eq1) ^ "\n")
 	val _ = print ("Eq2: " ^ (to_string eq2) ^ "\n")
 	val _ = print "\n"
 	in
-*)
 	if is_infinite eq1 orelse is_infinite eq2 then
 		raise Fail "Infinite solutions"
 	else if is_invalid eq1 orelse is_invalid eq2 then
 		NONE
+	else if C.same_int (0, a1) andalso not (C.same_int (0, b1)) then
+		solve (eq2, eq1)
 	else if not (C.same_int (0, b1)) then
+		let
+		val e = C.quot (b1, a1)
+		val es = scale (e, eq1)
+		val _ = print ("R1 factor: " ^ (C.to_string e) ^ "\n")
+		val _ = print ("R1 scaled: " ^ (to_string es) ^ "\n")
+		val _ = print ("R2 subtracted: " ^ (to_string (sub (eq2, es))) ^ "\n")
+		in
+    		solve (eq1, sub (eq2, scale (C.quot (b1, a1), eq1)))
+		end
+(*
 		solve (eq1, sub (eq2, scale (C.quot (b1, a1), eq1)))
+*)
 	else if not (C.same_int (0, a2)) then
 		solve (sub (eq1, scale (C.quot (a2, b2), eq2)), eq2)
 	else if not (C.same_int (1, b2)) then
@@ -198,9 +218,7 @@ fun solve (eq1 as (a1, a2, a3), eq2 as (b1, b2, b3)) : (C.coef * C.coef) option 
 		solve (scale (C.quot (C.new (1, NONE), a1), eq1), eq2)
 	else
 		SOME (a3, b3)
-(*
 	end
-*)
 
 end
 
@@ -253,10 +271,26 @@ fun smallest ({a = (ax, ay), b = (bx, by), p = (px, py)} : claw_info) : int = le
 (*
 			 val _ = print ("X=" ^ (C.to_string x) ^ ", Y=" ^ (C.to_string y) ^ "\n")
 			 val _ = print ()
+            b=(py*ax-px*ay)/(by*ax-bx*ay) a=(px-b*bx)/ax
 *)
+			 val _ = ()
 			 in
-    			 if C.is_full x andalso C.is_full y then
-    				 (3 * (C.get_int x)) + (1 * (C.get_int y))
+    			 if C.is_full x andalso C.is_full y then let
+        			 val _ = print ("Eq1: " ^ (E.to_string eq1) ^ "\n")
+        			 val _ = print ("Eq2: " ^ (E.to_string eq2) ^ "\n")
+        			 val bb = (py*ax-px*ay) div (by*ax-bx*ay)
+        			 val aa = (px-bb*bx) div ax
+					 val res_x = C.get_int x
+					 val res_y = C.get_int y
+					 val _ = print ("My x: " ^ (Int.toString res_x) ^ "\n")
+					 val _ = print ("My y: " ^ (Int.toString res_y) ^ "\n")
+					 val _ = print ("aa: " ^ (Int.toString aa) ^ "\n")
+					 val _ = print ("bb: " ^ (Int.toString bb) ^ "\n")
+					 val _ = print "\n"
+					 val _ = if res_x <> aa orelse res_y <> bb then raise Fail "" else ()
+					in
+    				 (3 * res_x) + (1 * res_y)
+					end
 				 else
     				 0
 			 end
@@ -268,13 +302,11 @@ fun part_1 (infos : claw_info list) : int =
 fun main () = let
 	val s_line = parse_machines "small.txt"
 	val l_line = parse_machines "large.txt"
-(*
-*)
 
     val p1s = part_1 s_line
 	val _ = print ("Part 1 small expected 480 and got: " ^ (Int.toString p1s) ^ "\n")
     val p1l = part_1 l_line
-	val _ = print ("Part 1 large expected <35595 and got: " ^ (Int.toString p1l) ^ "\n")
+	val _ = print ("Part 1 large expected 31623 and got: " ^ (Int.toString p1l) ^ "\n")
                                        (* >30337 *)
 
 (*
