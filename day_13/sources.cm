@@ -1,6 +1,8 @@
 Group is
 	$/basis.cm
 
+	../utils/coeficient.sml
+	../utils/equation_2d.sml
 	../utils/reader.sml
 	../utils/my_list.sml
 

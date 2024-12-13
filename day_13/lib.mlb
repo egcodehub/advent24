@@ -2,6 +2,8 @@ local
 /home/usuari/Documents/sources/mlton/basis-library/basis.mlb
 /home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
 in
+../utils/coeficient.sml
+../utils/equation_2d.sml
 ../utils/reader.sml
 ../utils/my_list.sml
 
