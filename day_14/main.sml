@@ -51,19 +51,6 @@ fun part_1 (lines : ((int * int) * (int * int)) list, dims, times) : int = let
 	val g = Int.toString
 	val f = fn ((a, b), (c, d)) => "p: (" ^ (g a) ^ ", " ^ (g b) ^ ") | v: (" ^ (g c) ^ ", " ^ (g d) ^ ")"
     val (q1, q2, q3, q4) = List.foldl (count_quadrants (dims, times)) (0, 0, 0, 0) lines
-(*
-	val r = shift_point (hd lines, 0, dims)
-	fun aaa i = let
-		val p = shift_point (hd lines, i, dims)
-		in
-    		if p = r then
-				i
-			else
-				aaa (i + 1)
-		end
-	val a = aaa 1
-	val _ = print ("Cycle: " ^ (Int.toString a) ^ "\n")
-*)
 	in
 		q1 * q2 * q3 * q4
 	end
@@ -100,18 +87,22 @@ fun part_2 (lines, (rows, cols)) = let
 		val _ = update (arr, List.map (fn l => shift_point (l, i, (rows, cols))) lines)
 		val _ = draw (arr, (rows, cols))
 		val _ = print ("State at step " ^ (Int.toString i) ^ "\n")
-		val _ = print ("  - Next: n\n  - Prev: v\n  - Jump to: j\n  - Quit: q\n> ")
+		val _ = print ("  - Next: n/enter\n  - Prev: p\n  - +103: a\n  - -103: d\n  - Solution: s\n  - Quit: q\n> ")
 		val input = Option.valOf (TextIO.inputLine TextIO.stdIn)
 		val _ = print ("Input issued: " ^ input ^ "\n")
 		in
 			if input = "n\n" then
 				loop (arr, i + 1)
-			else if input = "v\n" then
+			else if input = "p\n" then
 				loop (arr, i - 1)
-			else if input = "j\n" then
-				loop (arr, 5200)
-			else if input = "m\n" then
-				loop (arr, i + 100)
+			else if input = "a\n" then
+				loop (arr, i + 103)
+			else if input = "d\n" then
+				loop (arr, i - 103)
+			else if input = "z\n" then
+				loop (arr, 0)
+			else if input = "s\n" then
+				loop (arr, 8050)
 			else if input = "\n" then
 				loop (arr, i + 1)
 			else if input = "q\n" then
