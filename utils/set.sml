@@ -50,13 +50,13 @@ fun find (v : elem, Empty : set) : elem option =
 	   | General.GREATER => find (v, right)
 	   | General.EQUAL => SOME v0
 
-fun modify (v : elem, Empty : set) : set =
+fun modify (old : elem, new : elem, Empty : set) : set =
 	Empty
-  | modify (v, Node (left, v0, s, right)) =
-	case Key.cmp (v, v0)
-	  of General.LESS => Node (modify (v, left), v0, s, right)
-	   | General.GREATER => Node (left, v0, s, modify (v, right))
-	   | General.EQUAL => Node (left, v, s, right)
+  | modify (old, new, Node (left, current, s, right)) =
+	case Key.cmp (old, current)
+	  of General.LESS => Node (modify (old, new, left), current, s, right)
+	   | General.GREATER => Node (left, current, s, modify (old, new, right))
+	   | General.EQUAL => Node (left, new, s, right)
 
 fun remove_min Empty =
 	raise Set
