@@ -5,7 +5,7 @@ type coord = int * int
 
 datatype dir = U | D | R | L
 
-structure CO = Set (CoordOrd)
+structure D = Dictionary (IntOrd)
 
 type robot = {
 	pos : coord,
@@ -13,43 +13,57 @@ type robot = {
 }
 
 type warehouse = {
-	boxes : CO.set,
-	walls : CO.set
+	boxes : int list D.dict,
+	walls : int list D.dict
 }
 
+(* This is actually a debug function. *)
 fun pair_str (x, y) =
 	"(" ^ (Int.toString x) ^ ", " ^ (Int.toString y) ^ ")"
 
-fun parse_input (file_name : string) : robot * warehouse = let
-	fun explore_line (row, col, robot, bs, ws, "") =
-		(robot, bs, ws)
-	  | explore_line (row, col, robot, bs, ws, s) =
+fun parse_input (file_name : string, width) : robot * warehouse = let
+	fun explore_line (col, "") =
+		(NONE, [], [])
+	  | explore_line (col, s) =
 		case MyStr.first s
-		  of (#".", rest) =>
-			 explore_line (row, col + 1, robot, bs, ws, rest)
-		   | (#"O", rest) =>
-			 explore_line (row, col + 1, robot, CO.insert ((row, col), bs), ws, rest)
-		   | (#"#", rest) =>
-			 explore_line (row, col + 1, robot, bs, CO.insert ((row, col), ws), rest)
-		   | (#"@", rest) => (
-			 case robot
-			   of NONE => explore_line (row, col + 1, SOME (row, col), bs, ws, rest)
-				| SOME _ => raise Fail ("Second robot at: " ^ (pair_str (row, col)))
-			 )
-		   | _ => raise Fail ("Invalid character at: " ^ (pair_str (row, col)))
-	fun explore_warehouse (row, robot, bs, ws, []) =
+		  of (#".", rest) => let
+			 val (r, b, w) = explore_line (col + width, rest)
+			 in
+    			 (r, b, w)
+			 end
+		   | (#"O", rest) => let
+			 val (r, b, w) = explore_line (col + width, rest)
+			 in
+    			 (r, col :: b, w)
+			 end
+		   | (#"#", rest) => let
+			 val (r, b, w) = explore_line (col + width, rest)
+			 in
+    			 (r, b, col :: w)
+			 end
+		   | (#"@", rest) => let
+			 val (r, b, w) = explore_line (col + width, rest)
+			 val n_r = case r of NONE => SOME col | SOME _ => raise Fail "Repeated robot"
+			 in
+    			 (n_r, b, w)
+			 end
+		   | _ => raise Fail "Invalid character found"
+	fun explore_warehouse (row, robot, dbs, dws, []) =
 		raise Fail "Input ended before the directions"
-	  | explore_warehouse (row, robot, bs, ws, x :: xs) =
+	  | explore_warehouse (row, robot, dbs, dws, x :: xs) =
 		case MyStr.first x
 		  of (#"#", _) => let
-			 val (n_robot, n_bs, n_ws) = explore_line (row, 0, robot, bs, ws, x)
+			 val (r, bs, ws) = explore_line (0, x)
+			 val n_robot = case robot of NONE => (case r of NONE => NONE | SOME c => SOME (row, c)) | SOME _ => robot
+			 val n_dbs = case bs of [] => dbs | _ => D.insert ((row, bs), dbs)
+			 val n_dws = case ws of [] => dws | _ => D.insert ((row, ws), dws)
 			 in
-    			 explore_warehouse (row + 1, n_robot, n_bs, n_ws, xs)
+    			 explore_warehouse (row + 1, n_robot, n_dbs, n_dws, xs)
 			 end
 		   | _ => (
 			 case robot
 			   of NONE => raise Fail "The warehouse has no robot"
-				| SOME r => (r, bs, ws, x :: xs)
+				| SOME r => (r, dbs, dws, x :: xs)
 			 )
 	fun parse_directions [] =
 		[]
@@ -62,7 +76,7 @@ fun parse_input (file_name : string) : robot * warehouse = let
 		   | (#"v", rest) => D :: (parse_directions (rest :: xs))
 		   | (#"^", rest) => U :: (parse_directions (rest :: xs))
 		   | _ => raise Fail "Invalid character found while parsing directions"
-    val (robot, bs, ws, xs) = explore_warehouse (0, NONE, CO.empty, CO.empty, Read.read_lines file_name)
+    val (robot, bs, ws, xs) = explore_warehouse (0, NONE, D.empty, D.empty, Read.read_lines file_name)
 	val dirs = parse_directions xs
 	in
 		({ pos = robot, steps = dirs }, { boxes = bs, walls = ws })
@@ -78,65 +92,133 @@ fun dir_to_vect d =
 fun move ((x, y), (dx, dy)) =
 	(x + dx, y + dy)
 
-fun part_1 ({ pos, steps }, { boxes, walls }) = let
-	fun shift_boxes (m, v, bs, walls) = let
-		val p = move (m, v)
-		in
-    		case CO.find (p, walls)
-			  of SOME _ => NONE
-			   | NONE => (
-				 case CO.find (p, bs)
-				   of NONE => SOME (CO.insert (p, CO.remove (m, bs)))
-					| SOME _ => (
-					  case shift_boxes (p, v, bs, walls)
+(* the point we want to check.
+If we dont' find the row in the walls dictionary then there is no collision.
+*)
+
+fun take_collision (obsts, (r, c), width) =
+	case D.find (r, obsts)
+	  of NONE => NONE
+	   | SOME xs => let
+		 fun aux [] =
+			 NONE
+		   | aux (x :: xs) =
+			 if (c >= x) andalso c < (x + width) then
+    			 SOME (x, xs)
+			 else
+    			 case aux xs
+				   of NONE => NONE
+					| SOME (a, ys) => SOME (a, x :: ys)
+		 in
+    		 aux xs
+		 end
+
+fun displace_end (row : int, v : coord, start : int, width : int) : coord =
+	if v = (0, ~1) then
+		(row, start - 1)
+	else if v = (0, 1) then
+		(row, start + width)
+	else
+		raise Fail "Invalid vector for horizontal move"
+
+fun take_mult_collision (obsts : int list D.dict, (r, c) : coord, w : int) : (coord list * int list) option =
+	case D.find (r, obsts)
+	  of NONE => NONE
+	   | SOME xs => let
+		 fun aux (_ : int, _ : int, [] : int list) : coord list * int list =
+			 ([], [])
+		   | aux (new_start, w, obj_start :: xs) = let
+			 val (touch, no_touch) = aux (new_start, w, xs)
+			 val new_in_obj = new_start >= obj_start andalso (obj_start + 1) < (new_start + w)
+			 val obj_in_new = obj_start >= new_start andalso (obj_start + 1) < (new_start + w)
+			 val n_touch = if new_in_obj orelse obj_in_new then (r, obj_start) :: touch else touch
+			 val n_no_touch = if new_in_obj orelse obj_in_new then no_touch else obj_start :: no_touch
+			 in
+    			 (n_touch, n_no_touch)
+			 end
+		 in
+    		 case aux (c, w, xs)
+			   of ([], _) => NONE
+				| (ys, zs) => SOME (ys, zs)
+		 end
+
+fun part_2 (({ pos, steps }, { boxes, walls }), width) = let
+    fun vertical_move (m as (r, _), v, bs, w) =
+		case take_mult_collision (walls, m, w)
+		  of SOME _ => NONE
+		   | NONE => (
+			 case take_mult_collision (bs, m, w)
+			   of NONE => SOME bs
+				| SOME (hits, left) => let
+				  fun aux ([], bs) =
+					  SOME bs
+					| aux (h :: hits, bs) =
+					  case vertical_move (move (h, v), v, bs, 2)
 						of NONE => NONE
-						 | SOME n_bs => SOME (CO.insert (p, CO.remove (m, n_bs)))
-					  )
-				 )
-		end
-	fun do_steps ([], (row, col), bs) =
+						 | SOME nbs => aux (hits, nbs)
+				  val n_left = case left of [] => D.remove (r, bs) | _ => D.insert ((r, left), bs)
+				  in
+    				  aux (hits, n_left)
+				  end
+			 )
+    fun horizontal_move (m as (r, _), v, bs, w) =
+		case take_collision (walls, m, w)
+		  of SOME _ => NONE
+		   | NONE => (
+			 case take_collision (bs, m, w)
+			   of NONE => SOME bs
+				| SOME (s, rest) => let
+				  val n_m as (_, n_s) = displace_end (r, v, s, w)
+				  in
+    				  case horizontal_move (n_m, v, bs, 2)
+    					of NONE => NONE
+    					 | SOME n_bs => SOME (D.insert ((r, n_s :: rest), D.remove (r, bs)))
+				  end
+			 )
+	fun do_steps ((row, col), bs, []) =
 		bs
-	  | do_steps (step :: xs, (row, col), bs) = let
-		val v = dir_to_vect step
-		val m = move ((row, col), v)
-(*
-		val _ = print ("Moving the point " ^ (pair_str (row, col)) ^ " to " ^ (pair_str m) ^ "\n")
-*)
+	  | do_steps (pos, bs, x :: xs) = let
+		val v = dir_to_vect x
+		val m = move (pos, v)
+		val a =
+			if x = L orelse x = R then
+    			horizontal_move (m, v, bs, 1)
+			else
+    			vertical_move (m, v, bs, 1)
 		in
-    		case CO.find (m, walls)
-			  of SOME _ => do_steps (xs, (row, col), bs)
-			   | NONE => (
-				 case CO.find (m, bs)
-				   of NONE => do_steps (xs, m, bs)
-					| SOME _ => (
-					  case shift_boxes (m, v, bs, walls)
-						of NONE => do_steps (xs, (row, col), bs)
-						 | SOME n_bs => do_steps (xs, m, n_bs)
-					  )
-				 )
+			case a
+			  of NONE => do_steps (pos, bs, xs)
+			   | SOME n_bs => do_steps (m, n_bs, xs)
 		end
-	val n_bs = do_steps (steps, pos, boxes)
+    val n_bs : (int * int list) list = D.to_list (do_steps (pos, boxes, steps))
+	val f = fn ((x, ys), acc) => (List.foldl (fn (y, ycc) => (100 * x + y) + ycc) 0 ys) + acc
 (*
-	val g = fn (x, y) => "Box at: " ^ (pair_str (x, y))
-	val _ = print (MyList.to_string g ("", "\n", "\n") (CO.to_list n_bs))
+	List.foldl (fn ((x, y), acc) => ((100 * x) + y) + acc) 0 (CO.to_list n_bs)
 *)
+
+	fun esta (r, ys) = let
+		val sy = MyList.to_string Int.toString ("[", ", ", "]") ys
+		val all = " Boxes at line " ^ (Int.toString r) ^ ": " ^ sy
+		in all end
+	val _ = print ("Robot position: " ^ (pair_str pos) ^ "\n")
+	val _ = print "Boxes at the start\n"
+	val _ = print (MyList.to_string esta ("", "\n", "\n") (D.to_list boxes))
+	val _ = print "Boxes at the end\n"
+	val _ = print (MyList.to_string esta ("", "\n", "\n") n_bs)
+
 	in
-    	List.foldl (fn ((x, y), acc) => ((100 * x) + y) + acc) 0 (CO.to_list n_bs)
+    	List.foldl f 0 n_bs
 	end
 
 fun main () = let
-	val small_input = parse_input "small.txt"
-	val medium_input = parse_input "medium.txt"
-	val large_input = parse_input "large.txt"
+	val small_input_2 = parse_input ("small_second.txt", 2)
+(*
+	val medium_input_2 = parse_input ("medium.txt", 2)
+	val large_input_2 = parse_input ("large.txt", 2)
+*)
 
-    val p1s = part_1 small_input
-	val _ = print ("Part 1 small expected 2028 and got: " ^ (Int.toString p1s) ^ "\n")
-
-    val p1m = part_1 medium_input
-	val _ = print ("Part 1 medium expected 10092 and got: " ^ (Int.toString p1m) ^ "\n")
-
-    val p1l = part_1 large_input
-	val _ = print ("Part 1 large expected 1383666 and got: " ^ (Int.toString p1l) ^ "\n")
+    val p2s = part_2 (small_input_2, 2)
+	val _ = print ("Part 2 small expected 9021 and got: " ^ (Int.toString p2s) ^ "\n")
 
 (*
     val p2l = part_2 (large_lines, (101, 103))

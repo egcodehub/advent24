@@ -2,9 +2,9 @@ Group is
 	$/basis.cm
 
 	../utils/ord_key.sig
-	../utils/coord_ord.sml
-	../utils/set.sig
-	../utils/set.sml
+	../utils/int_ord.sml
+	../utils/dictionary.sig
+	../utils/dictionary.sml
 
 	../utils/reader.sml
 	../utils/my_str.sml
