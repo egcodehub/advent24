@@ -2,8 +2,19 @@ local
 /home/usuari/Documents/sources/mlton/basis-library/basis.mlb
 /home/usuari/Documents/sources/mlton/basis-library/mlton.mlb
 in
-../utils/reader.sml
+../utils/ord_key.sig
+../utils/int_ord.sml
+../utils/coord_ord.sml
+../utils/dictionary.sig
+../utils/dictionary.sml
+../utils/set.sig
+../utils/set.sml
 
-main.sml
+../utils/reader.sml
+../utils/my_str.sml
+
+part1.sml
+part2.sml
+
 end
 

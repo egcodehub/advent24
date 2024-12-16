@@ -1,4 +1,4 @@
-structure Main =
+structure Main1 =
 struct
 
 type coord = int * int
@@ -137,11 +137,6 @@ fun main () = let
 
     val p1l = part_1 large_input
 	val _ = print ("Part 1 large expected 1383666 and got: " ^ (Int.toString p1l) ^ "\n")
-
-(*
-    val p2l = part_2 (large_lines, (101, 103))
-	val _ = print ("Part 2 large expected 8050 and got: " ^ (Int.toString p2l) ^ "\n")
-*)
 	in
     	()
 	end
@@ -149,6 +144,6 @@ fun main () = let
 end
 
 (*
-val _ = Main.main ()
+val _ = Main1.main ()
 *)
 
