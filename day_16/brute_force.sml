@@ -71,34 +71,6 @@ fun find_steps (maze, p) : coord list = let
 		aux dirs
 	end
 
-(* Given a point and a test on points, keep the directly adjacent points to center that pass the test. *)
-fun sides (test : coord -> bool, center : coord) = let
-	val dirs = [(0, 1), (1, 0), (~1, 0), (0, ~1)]
-	fun aux [] =
-		[]
-	  | aux (x :: xs) = let
-		if test (step (center, x)) then
-			x :: (aux xs)
-		else
-			aux xs
-	in
-		aux (dirs
-	end
-
-fun first_junction (test : coord -> bool, p : coord, v : coord) =
-
-fun find_adjacents (test : coord -> bool, p) = let
-	val pointers = sides (test, p)
-	in
-    	val
-	end
-
-fun build_graph (maze : char A.array, (start, exit)) = let
-	fun aux
-	in
-    	
-	end
-
 structure S = Set (CoordOrd)
 
 fun find_min (this, min) =
@@ -178,13 +150,13 @@ fun main () = let
 *)
 
 (*
+*)
 	val l_maze = read_maze "large.txt"
     val p2l = part_1 l_maze
 	val _ = print ("Part 2 large expected ??? and got: " ^ (Int.toString p2l) ^ "\n")
 	in
     	()
 	end
-*)
 
 end
 
